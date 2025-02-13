@@ -77,6 +77,6 @@ class Bot {
         }
 
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOkRGRXhicUsyV1hkeWlLRDE=")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
     }
 }
