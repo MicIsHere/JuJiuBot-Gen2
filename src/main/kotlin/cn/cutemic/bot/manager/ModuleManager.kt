@@ -2,6 +2,7 @@ package cn.cutemic.bot.manager
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.module.BotModule
+import cn.cutemic.bot.util.Task
 import cn.cutemic.bot.util.instance
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.system.measureTimeMillis
@@ -16,6 +17,7 @@ object ModuleManager {
                 .forEach { module ->
                     runCatching {
                         registerModule(module.instance!!)
+                        TaskManager.tryRegister(module.instance!!)
                     }.onFailure {
                         Bot.LOGGER.error("Module ${module.name} encountered a error while registering, and System has stopped module load!")
                         throw it

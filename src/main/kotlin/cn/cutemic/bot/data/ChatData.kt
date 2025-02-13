@@ -9,8 +9,10 @@ data class ChatData(
     val userID: Long,
     @SerialName("raw_message")
     val rawMessage: String,
+    @SerialName("is_plain_text")
+    val isPlainText: Boolean,
     @SerialName("plain_text")
-    val plainText: String,
+    val plainText: String?,
     @SerialName("time")
     val time: Long,
     @SerialName("bot_id")

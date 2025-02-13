@@ -2,11 +2,13 @@ package cn.cutemic.bot
 
 import cn.cutemic.bot.event.EventRegistry.initAllEvents
 import cn.cutemic.bot.manager.ModuleManager
+import cn.cutemic.bot.manager.TaskManager
 import cn.cutemic.bot.util.KernelScope
 import cn.cutemic.bot.util.runSynchronized
 import com.hankcs.hanlp.restful.HanLPClient
 import com.huaban.analysis.jieba.WordDictionary
 import com.huaban.analysis.jieba.viterbi.FinalSeg
+import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
 import kotlinx.coroutines.launch
@@ -40,6 +42,10 @@ class Bot {
             WordDictionary.getInstance().loadDict()
             FinalSeg.getInstance()
             TFIDF.init()
+        }
+
+        TaskManager.let {
+            LOGGER.info("Task loading...")
         }
 
         LOGGER.info("System is ok.")
@@ -78,5 +84,9 @@ class Bot {
 
         val TFIDF = TFIDFAnalyzer()
         var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
+        val MONGO_DB = MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot").let {
+            LOGGER.info("Connect database success.")
+            it
+        }
     }
 }

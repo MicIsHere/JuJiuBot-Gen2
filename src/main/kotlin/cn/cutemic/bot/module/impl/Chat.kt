@@ -4,6 +4,7 @@ import cn.cutemic.bot.Bot
 import cn.cutemic.bot.data.ChatData
 import cn.cutemic.bot.data.IgnoreCommand
 import cn.cutemic.bot.module.BotModule
+import cn.cutemic.bot.util.Task
 import com.hankcs.hanlp.restful.HanLPClient
 import com.qianxinyao.analysis.jieba.keyword.Keyword
 import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
@@ -40,6 +41,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     groupId.value,
                     userId.value,
                     rawMessage,
+                    true,
                     message,
                     time.milliseconds,
                     bot.userId.toLong()
@@ -101,6 +103,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             }
         }
 
+        Bot.LOGGER.info(Bot.MONGO_DB.getCollection<ChatData>("message").find())
+
         val respone = StringBuilder()
 
         keywordList.forEach {
@@ -111,12 +115,19 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         Bot.LOGGER.info("Learned message $respone")
     }
 
+
     private suspend fun reply(data: ChatData){
-        if (data.plainText != "" && data.plainText.length < 2) {
+        if (data.plainText != "" && data.plainText!!.length < 2) {
             return
         }
 
 
+    }
+
+    @Task(60L)
+    private suspend fun messageSyncToDatabase(){
+        Bot.LOGGER.info("Syncing message cache to database...")
+        Bot.MONGO_DB.getCollection<ChatData>("message")
     }
 
     private suspend fun addMessageToCache(data: ChatData) {
