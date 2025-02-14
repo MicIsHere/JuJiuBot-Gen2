@@ -13,6 +13,7 @@ import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
 import kotlinx.coroutines.launch
 import love.forte.simbot.application.Application
+import love.forte.simbot.component.onebot.v11.core.bot.OneBotBot
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBotConfiguration
 import love.forte.simbot.component.onebot.v11.core.bot.firstOneBotBotManager
 import love.forte.simbot.component.onebot.v11.core.useOneBot11
@@ -29,7 +30,6 @@ class Bot {
 
     init {
         LOGGER.info("System init...")
-        ModuleManager.perLoadModule()
         KernelScope.launch {
             LOGGER.info("OneBot loading...")
             app = launchSimpleApplication {
@@ -54,7 +54,7 @@ class Bot {
     private suspend fun Application.configure() {
         runCatching {
             val botManager = botManagers.firstOneBotBotManager()
-            val bot = botManager.register(
+            ONEBOT = botManager.register(
                 OneBotBotConfiguration().apply {
                     // 这几个是必选属性
                     /// 在OneBot组件中用于区分不同Bot的唯一ID， 建议可以直接使用QQ号。
@@ -64,12 +64,13 @@ class Bot {
                 }
             )
 
+            ModuleManager.perLoadModule()
             this.initAllEvents().let {
                 LOGGER.info("Init all module(s) event...")
             }
 
             LOGGER.info("OneBot is ok.")
-            bot.start()
+            ONEBOT.start()
         }.onFailure {
             LOGGER.fatal("An error occurred while loading the system: ${it.message}")
             it.printStackTrace()
@@ -78,7 +79,7 @@ class Bot {
 
     companion object {
         val LOGGER: Logger = LogManager.getLogger("JuJiuBot").let {
-            Configurator.setLevel(it.name, Level.ALL);
+            Configurator.setLevel(it.name, Level.ALL)
             return@let it
         }
 
@@ -88,5 +89,7 @@ class Bot {
             LOGGER.info("Connect database success.")
             it
         }
+
+        lateinit var ONEBOT: OneBotBot
     }
 }

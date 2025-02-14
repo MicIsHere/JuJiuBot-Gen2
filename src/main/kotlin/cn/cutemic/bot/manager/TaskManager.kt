@@ -10,10 +10,17 @@ import kotlin.reflect.jvm.isAccessible
 object TaskManager {
     private val jobs = mutableListOf<Job>()
 
-    fun tryRegister(obj: Any) {
+    init {
+        ClassManager.taskField.forEach {
+            tryRegister(it)
+        }
+    }
+
+    private fun tryRegister(obj: Any) {
         obj::class.members.forEach { member ->
             member.annotations.forEach { annotation ->
                 if (annotation is Task) {
+                    Bot.LOGGER.info("Register task ${obj.javaClass.name}")
                     checkMember(member as KFunction<*>)
                     scheduleTask(obj, member, annotation.intervalSeconds)
                 }
@@ -28,13 +35,12 @@ object TaskManager {
     }
 
     private fun scheduleTask(obj: Any, method: KFunction<*>, interval: Long) {
-        Bot.LOGGER.info("Register task ${obj.javaClass.name}")
         method.isAccessible = true
 
         val job = TaskScope.launch {
             while (isActive) {
                 delay(interval * 1000)
-                method.call(obj, null)
+                method.call(obj)
             }
         }
         jobs.add(job)
