@@ -33,7 +33,8 @@ class MessageCache {
         lock.writeLock().withLock {
             val messages = cache.getOrPut(data.groupID) { mutableListOf() }
             messages.add(data)
-            if (messages.size > 500) {
+            if (messages.size > 5) {
+                Bot.LOGGER.info("Message cache is full, remove older cache.")
                 messages.removeAt(0)
             }
         }
@@ -54,7 +55,7 @@ class MessageCache {
             if (groupCache.size >= MAX_GROUP_MESSAGE_CACHE_SIZE) {
                 Bot.LOGGER.info("Group $groupID message cache is full, syncing to database...")
                 runBlocking {
-                    Bot.MONGO_DB.getCollection<ChatData>("message").insertMany(groupCache)
+                    //数据置入
                     updateLastSyncTime(groupID)
                 }
                 groupCache.clear()
@@ -63,7 +64,7 @@ class MessageCache {
             if (System.currentTimeMillis() - (lastSyncTime[groupID] ?: System.currentTimeMillis()) >= MAX_GROUP_MESSAGE_CACHE_SYNC_TIME) {
                 Bot.LOGGER.info("Group $groupID sync-time is out limit, syncing to database...")
                 runBlocking {
-                    Bot.MONGO_DB.getCollection<ChatData>("message").insertMany(groupCache)
+                    //数据置入
                     updateLastSyncTime(groupID)
                 }
                 groupCache.clear()

@@ -15,6 +15,7 @@ object ModuleManager {
             ClassManager.botModuleClasses
                 .forEach { module ->
                     runCatching {
+                        TaskManager.tryRegister(module.instance!!)
                         registerModule(module.instance!!)
                     }.onFailure {
                         Bot.LOGGER.error("Module ${module.name} encountered a error while registering, and System has stopped module load!")

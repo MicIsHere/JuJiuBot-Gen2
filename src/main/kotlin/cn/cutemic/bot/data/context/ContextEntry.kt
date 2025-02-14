@@ -1,15 +1,15 @@
 package cn.cutemic.bot.data.context
 
-import org.bson.codecs.pojo.annotations.BsonProperty
+import kotlinx.serialization.SerialName
 
 data class ContextEntry(
-    @BsonProperty("keywords")
+    @SerialName("keywords")
     val keywords: String,
-    @BsonProperty("answers")
+    @SerialName("answers")
     val answers: MutableList<AnswerEntry>,
-    @BsonProperty("count")
+    @SerialName("count")
     var count: Int,
-    @BsonProperty("last_updated")
+    @SerialName("last_updated")
     var lastUpdated: Long
 ) {
     constructor(keywords: String) : this(

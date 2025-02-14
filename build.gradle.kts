@@ -18,8 +18,14 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.reflections:reflections:0.10.2")
     implementation("com.hankcs.hanlp.restful:hanlp-restful:0.0.15")
-    implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.3.0")
-    implementation("org.mongodb:bson-kotlinx:5.3.0")
+
+    implementation("io.insert-koin:koin-ktor:4.0.2")
+
+    implementation("org.jetbrains.exposed:exposed-core:0.59.0")
+    implementation("org.jetbrains.exposed:exposed-dao:0.59.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.59.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.59.0")
+    implementation("com.impossibl.pgjdbc-ng:pgjdbc-ng:0.8.9")
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     runtimeOnly("io.ktor:ktor-client-java:2.3.13")

@@ -43,6 +43,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     userId.value,
                     rawMessage,
                     true,
+                    analyzeText(message),
                     message,
                     time.milliseconds,
                     bot.userId.toLong()
@@ -54,8 +55,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
     }
 
-    private suspend fun learn(data: ChatData){
-        // 获取群里的上一条发言
+    private fun learn(data: ChatData){
+        // 获取群里的上一条发言 当作现在处理这条消息的(问题)
         val lastMessage = messageCache.get(data.groupID).let {
             if (it.isEmpty()) {
                 Bot.LOGGER.info("Context is empty, ignore.")
@@ -66,11 +67,11 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
         // 添加这次发言的信息数据
         messageCache.addMessage(data)
+
         // 复读检查
         if (lastMessage.plainText == data.plainText) {
             return
         }
-
         // 上一条发言用户不是这次数据的用户 将尝试获取前三条数据
         if (lastMessage.userID != data.userID) {
             runCatching {
@@ -78,10 +79,11 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     .take(2)
                     .firstOrNull { msg ->
                         requireNotNull(msg.userID) { "Invalid user ID in message" }
-                        msg.userID == lastMessage.userID
+                        msg.userID == lastMessage.userID &&
+                        msg.plainText != lastMessage.plainText // 复读检查
                     }?.let { foundMsg ->
                         contextCache.upsert(
-                            analyzeText(lastMessage.plainText!!),
+                            analyzeText(foundMsg.plainText!!),
                             analyzeText(data.plainText!!),
                             data.groupID,
                             data.plainText
@@ -137,7 +139,9 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
     @Task(15L)
     private fun autoSync(){
+        Bot.LOGGER.info("Trying auto-sync...")
         messageCache.messageSyncToDatabase()
+        contextCache.sync()
     }
 
 }

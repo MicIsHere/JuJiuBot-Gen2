@@ -11,6 +11,8 @@ import love.forte.simbot.message.safePlainText
 
 object Admin: BotModule("管理","用于管理牛牛") {
 
+    private val result = StringBuilder()
+
     init {
         event {
             on<OneBotNormalGroupMessageEvent> {
@@ -18,41 +20,54 @@ object Admin: BotModule("管理","用于管理牛牛") {
                     return@on EventResult.empty()
                 }
 
-                val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
-                when (command) {
-                    "sendmsgcache" -> {
-                        if (Chat.messageCache.get(groupId.toLong()).isEmpty()) {
-                            Bot.LOGGER.info("MessageCache is empty.")
-                            reply("该群的MessageCache为空。")
-                            return@on EventResult.empty()
+                result.clear()
+                result.append("操作成功完成。\n")
+
+                runCatching {
+                    val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
+                    when (command) {
+                        "sendmsgcache" -> {
+                            if (Chat.messageCache.get(groupId.toLong()).isEmpty()) {
+                                result.append("该群的MessageCache为空。")
+                                return@on EventResult.empty()
+                            }
+                            Chat.messageCache.get(groupId.toLong()).forEach {
+                                result.append("$it\n")
+                            }
                         }
 
-                        val result = MessagesBuilder
-                            .create()
-                            .add("Result:\n")
-                        Chat.messageCache.get(groupId.toLong()).forEach {
-                            result.add("$it\n")
-                        }
-                        result.add("---结束---")
-                        reply(result.build())
-                    }
-
-                    "sendsynctime" -> {
-                        val result = MessagesBuilder
-                            .create()
-                            .add("Last database sync-time:\n")
-
-                        Chat.messageCache.getLastSyncTime().forEach { (t, u) ->
-                            result.add("$t -> $u\n")
+                        "synccontext" -> {
+                            Chat.contextCache.sync()
                         }
 
-                        result.add("---结束---")
-                        reply(result.build())
-                    }
+                        "syncmsg" -> {
+                            Chat.messageCache.messageSyncToDatabase()
+                        }
 
-                    else -> {
-                        reply("没有该指令。")
+                        "sendsynctime" -> {
+                            Chat.messageCache.getLastSyncTime().forEach { (t, u) ->
+                                result.append("$t -> $u\n")
+                            }
+                        }
+
+                        "crashtest" -> {
+                            val nu11 = null
+                            nu11!!
+                        }
+
+                        else -> {
+                            result.append("没有该指令。")
+                        }
                     }
+                }.onFailure {
+                    val stackTrace = StringBuilder()
+                    it.stackTrace.forEach {
+                        stackTrace.append("在 ${it.className}.${it.methodName}:${it.lineNumber}\n")
+                    }
+                    reply("操作出现错误 (${it.message})：$it\n${stackTrace}")
+                    it.printStackTrace()
+                }.onSuccess {
+                    reply(result.toString())
                 }
 
                 EventResult.empty()

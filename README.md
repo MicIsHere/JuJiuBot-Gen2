@@ -20,20 +20,32 @@
 
 ## 致谢
 
-### 开源库
+### 参考
 [Pallas-Bot](https://github.com/MistEO/Pallas-Bot): 《明日方舟》帕拉斯 Bot，同时也是本项目的前身。
+
+### 基础库
 
 [Simple Robot](https://github.com/simple-robot/simpler-robot): 一个 Bot 风格的 Kotlin 多平台事件调度框架。
 
 [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core): 一个基于纯 C# 的 NTQQ 协议实现。
 
+[OneBot-11](https://github.com/botuniverse/onebot-11): OneBot 11 标准
+
+[Ktor](https://github.com/ktorio/ktor): 面向创建微服务、Web 应用程序等的高性能异步框架。
+
+[Kotlin](https://github.com/JetBrains/kotlin): 简洁、安全的现代编程语言。
+
+### 语言处理
 [jieba-analysis](https://github.com/huaban/jieba-analysis): jieba 分词的 Java 实现。
 
 [HanLP](https://github.com/hankcs/HanLP): 面向生产环境的多语种自然语言处理工具包。
 
-[Ktor](https://github.com/ktorio/ktor): 面向创建微服务、Web 应用程序等的高性能异步框架。
+### 数据处理
+[Exposed](https://github.com/JetBrains/Exposed): 适用于 Kotlin 的 ORM 框架。
 
-[Kotlin](https://github.com/JetBrains/kotlin): 简洁、安全的现代编程语言
+[Koin](https://github.com/InsertKoinIO/koin): 一个实用的轻量级依赖注入框架，适用于 Kotlin 和 Kotlin 多平台。
+
+[pgjdbc-ng](https://github.com/impossibl/pgjdbc-ng/): 适用于 PostgreSQL 的新 JDBC 驱动程序，支持 JDBC 和 Postgres 的高级功能。
 
 ### 组织/贡献者
 [Origin Technology](https://github.com/Origin-Technology): 为其提供基础网络服务

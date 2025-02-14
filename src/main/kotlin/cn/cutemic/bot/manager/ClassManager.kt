@@ -7,11 +7,13 @@ import org.reflections.Reflections
 
 
 object ClassManager {
-    val botModuleClasses = Reflections("cn.cutemic.bot.module").getSubTypesOf(BotModule::class.java)
-    val taskField = Reflections().getFieldsAnnotatedWith(Task::class.java)
+    val botModuleClasses = Reflections("cn.cutemic.bot").getSubTypesOf(BotModule::class.java)
+    val taskField = Reflections("cn.cutemic.bot").getFieldsAnnotatedWith(Task::class.java)
 
     init {
         Bot.LOGGER.info("Module classes: ${botModuleClasses.size}")
-        Bot.LOGGER.info("Task field: ${taskField.size}")
+        if (taskField.isEmpty()) {
+            Bot.LOGGER.warn("Cannot get task field!")
+        }
     }
 }

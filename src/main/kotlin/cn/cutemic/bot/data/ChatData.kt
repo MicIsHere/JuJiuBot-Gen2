@@ -1,20 +1,22 @@
 package cn.cutemic.bot.data
 
-import org.bson.codecs.pojo.annotations.BsonProperty
+import kotlinx.serialization.SerialName
 
 data class ChatData(
-    @BsonProperty("group_id")
+    @SerialName("group_id")
     val groupID: Long,
-    @BsonProperty("user_id")
+    @SerialName("user_id")
     val userID: Long,
-    @BsonProperty("raw_message")
+    @SerialName("raw_message")
     val rawMessage: String,
-    @BsonProperty("is_plain_text")
+    @SerialName("is_plain_text")
     val isPlainText: Boolean,
-    @BsonProperty("plain_text")
+    @SerialName("keywords")
+    val keywords: String,
+    @SerialName("plain_text")
     val plainText: String?,
-    @BsonProperty("time")
+    @SerialName("time")
     val time: Long,
-    @BsonProperty("bot_id")
+    @SerialName("bot_id")
     val botID: Long
 )

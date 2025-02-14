@@ -8,7 +8,6 @@ import cn.cutemic.bot.util.runSynchronized
 import com.hankcs.hanlp.restful.HanLPClient
 import com.huaban.analysis.jieba.WordDictionary
 import com.huaban.analysis.jieba.viterbi.FinalSeg
-import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
 import kotlinx.coroutines.launch
@@ -78,18 +77,14 @@ class Bot {
     }
 
     companion object {
+        private val LOG_LEVEL: Level = Level.ALL
+
         val LOGGER: Logger = LogManager.getLogger("JuJiuBot").let {
-            Configurator.setLevel(it.name, Level.ALL)
+            Configurator.setLevel(it.name, LOG_LEVEL)
             return@let it
         }
-
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
-        val MONGO_DB = MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot").let {
-            LOGGER.info("Connect database success.")
-            it
-        }
-
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOlBiT29oelBVZzVHeHp3dnY=")
         lateinit var ONEBOT: OneBotBot
     }
 }

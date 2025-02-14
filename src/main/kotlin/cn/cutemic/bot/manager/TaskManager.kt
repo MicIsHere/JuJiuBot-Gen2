@@ -16,11 +16,11 @@ object TaskManager {
         }
     }
 
-    private fun tryRegister(obj: Any) {
+    fun tryRegister(obj: Any) {
         obj::class.members.forEach { member ->
             member.annotations.forEach { annotation ->
                 if (annotation is Task) {
-                    Bot.LOGGER.info("Register task ${obj.javaClass.name}")
+                    Bot.LOGGER.info("Register task ${obj.javaClass.name}.${member.name}")
                     checkMember(member as KFunction<*>)
                     scheduleTask(obj, member, annotation.intervalSeconds)
                 }
