@@ -1,4 +1,4 @@
-package cn.cutemic.bot.data.context
+package cn.cutemic.bot.model.context
 
 import kotlinx.serialization.SerialName
 

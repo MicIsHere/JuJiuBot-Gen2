@@ -1,34 +1,37 @@
 package cn.cutemic.bot.module.impl.chat
 
 import cn.cutemic.bot.Bot
-import cn.cutemic.bot.data.ChatData
+import cn.cutemic.bot.database.MessageService
+import cn.cutemic.bot.model.MessageExposed
 import kotlinx.coroutines.runBlocking
+import org.koin.java.KoinJavaComponent.inject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 
 class MessageCache {
-    private val cache = ConcurrentHashMap<Long, MutableList<ChatData>>()
-    private val lastSyncTime = ConcurrentHashMap<Long,Long>()
-    private val lock = ReentrantReadWriteLock()
+    private val service by inject<MessageService>(MessageService::class.java)
 
+    private val cache = ConcurrentHashMap<String, MutableList<MessageExposed>>()
+    private val lastSyncTime = ConcurrentHashMap<String,Long>()
+    private val lock = ReentrantReadWriteLock()
     // 最大信息缓存数量
     private val MAX_GROUP_MESSAGE_CACHE_SIZE = 5
     // 最大同步时间，超过该时间将强制同步
     private val MAX_GROUP_MESSAGE_CACHE_SYNC_TIME = 60L
 
-    fun updateLastSyncTime(groupId: Long){
+    fun updateLastSyncTime(groupId: String){
         lastSyncTime[groupId] = System.currentTimeMillis().let {
             Bot.LOGGER.info("Update group($groupId) last sync-time is $it")
             it
         }
     }
 
-    fun getLastSyncTime(): Map<Long,Long>{
+    fun getLastSyncTime(): Map<String,Long>{
         return lastSyncTime
     }
 
-    fun addMessage(data: ChatData) {
+    fun addMessage(data: MessageExposed) {
         Bot.LOGGER.info("Add message to cache: $data")
         lock.writeLock().withLock {
             val messages = cache.getOrPut(data.groupID) { mutableListOf() }
@@ -40,7 +43,7 @@ class MessageCache {
         }
     }
 
-    fun get(groupId: Long): List<ChatData> {
+    fun get(groupId: String): List<MessageExposed> {
         lock.readLock().withLock {
             return cache[groupId]?.toList() ?: emptyList()
         }
@@ -55,7 +58,7 @@ class MessageCache {
             if (groupCache.size >= MAX_GROUP_MESSAGE_CACHE_SIZE) {
                 Bot.LOGGER.info("Group $groupID message cache is full, syncing to database...")
                 runBlocking {
-                    //数据置入
+                    service.addMany(groupCache)
                     updateLastSyncTime(groupID)
                 }
                 groupCache.clear()
@@ -64,7 +67,7 @@ class MessageCache {
             if (System.currentTimeMillis() - (lastSyncTime[groupID] ?: System.currentTimeMillis()) >= MAX_GROUP_MESSAGE_CACHE_SYNC_TIME) {
                 Bot.LOGGER.info("Group $groupID sync-time is out limit, syncing to database...")
                 runBlocking {
-                    //数据置入
+                    service.addMany(groupCache)
                     updateLastSyncTime(groupID)
                 }
                 groupCache.clear()

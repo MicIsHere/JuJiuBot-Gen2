@@ -1,17 +1,24 @@
 package cn.cutemic.bot.module.impl.chat
 
 import cn.cutemic.bot.Bot
-import cn.cutemic.bot.data.ChatData
-import cn.cutemic.bot.data.IgnoreCommand
+import cn.cutemic.bot.database.BotService
+import cn.cutemic.bot.database.GroupService
+import cn.cutemic.bot.model.IgnoreCommand
+import cn.cutemic.bot.model.MessageExposed
 import cn.cutemic.bot.module.BotModule
 import cn.cutemic.bot.util.Task
+import kotlinx.coroutines.runBlocking
 import love.forte.simbot.common.collectable.toList
 import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.event.EventResult
+import org.koin.java.KoinJavaComponent.inject
 
 
 object Chat: BotModule("聊天","与牛牛聊天") {
+
+    private val groupService by inject<GroupService>(GroupService::class.java)
+    private val botService by inject<BotService>(BotService::class.java)
 
     // 学习关键词的数量
     private const val KEYWORD_SIZE = 2
@@ -21,13 +28,19 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
     init {
         Bot.ONEBOT.groupRelation.groups.toList().forEach {
-            Bot.LOGGER.info("Init group(${it.id}) last sync time.")
-            messageCache.updateLastSyncTime(it.id.toLong())
+            runBlocking {
+                val group = groupService.read(it.id.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
+                Bot.LOGGER.info("Init group(${it.id}) last sync time.")
+                messageCache.updateLastSyncTime(group)
+            }
         }
 
         event {
             on<OneBotNormalGroupMessageEvent> {
                 val message = messageContent.plainText ?: ""
+                val bot = botService.read(bot.userId.toLong()) ?: throw NullPointerException("Cannot get bot-id in database.")
+                val group = groupService.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
+
                 if (message.length <= 2) {
                     Bot.LOGGER.info("Message($message) too short or not text, ignore.")
                     return@on EventResult.invalid()
@@ -38,15 +51,15 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     return@on EventResult.invalid()
                 }
 
-                val chatData = ChatData(
-                    groupId.value,
+
+                val chatData = MessageExposed(
+                    group,
                     userId.value,
                     rawMessage,
-                    true,
                     analyzeText(message),
                     message,
                     time.milliseconds,
-                    bot.userId.toLong()
+                    bot
                 )
 
                 learn(chatData)
@@ -55,7 +68,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
     }
 
-    private fun learn(data: ChatData){
+    private fun learn(data: MessageExposed){
         // 获取群里的上一条发言 当作现在处理这条消息的(问题)
         val lastMessage = messageCache.get(data.groupID).let {
             if (it.isEmpty()) {
@@ -131,7 +144,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         return result.toString()
     }
 
-    private fun reply(data: ChatData){
+    private fun reply(data: MessageExposed){
         if (data.plainText != "" && data.plainText!!.length < 2) {
             return
         }

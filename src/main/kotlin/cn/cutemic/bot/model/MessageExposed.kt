@@ -1,16 +1,14 @@
-package cn.cutemic.bot.data
+package cn.cutemic.bot.model
 
 import kotlinx.serialization.SerialName
 
-data class ChatData(
+data class MessageExposed(
     @SerialName("group_id")
-    val groupID: Long,
+    val groupID: String,
     @SerialName("user_id")
     val userID: Long,
     @SerialName("raw_message")
     val rawMessage: String,
-    @SerialName("is_plain_text")
-    val isPlainText: Boolean,
     @SerialName("keywords")
     val keywords: String,
     @SerialName("plain_text")
@@ -18,5 +16,5 @@ data class ChatData(
     @SerialName("time")
     val time: Long,
     @SerialName("bot_id")
-    val botID: Long
+    val botID: String
 )

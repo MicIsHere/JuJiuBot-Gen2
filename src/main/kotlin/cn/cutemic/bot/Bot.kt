@@ -1,5 +1,7 @@
 package cn.cutemic.bot
 
+import cn.cutemic.bot.database.BotService
+import cn.cutemic.bot.database.GroupService
 import cn.cutemic.bot.event.EventRegistry.initAllEvents
 import cn.cutemic.bot.manager.ModuleManager
 import cn.cutemic.bot.manager.TaskManager
@@ -12,6 +14,8 @@ import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
 import kotlinx.coroutines.launch
 import love.forte.simbot.application.Application
+import love.forte.simbot.common.collectable.toList
+import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBot
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBotConfiguration
 import love.forte.simbot.component.onebot.v11.core.bot.firstOneBotBotManager
@@ -22,13 +26,22 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.core.config.Configurator
+import org.koin.java.KoinJavaComponent.inject
 
 
 class Bot {
     private lateinit var app: SimpleApplication
 
+    private val groupService by inject<GroupService>(GroupService::class.java)
+    private val botService by inject<BotService>(BotService::class.java)
+
     init {
         LOGGER.info("System init...")
+
+        KoinBootstrap().let {
+            LOGGER.info("Koin loading...")
+        }
+
         KernelScope.launch {
             LOGGER.info("OneBot loading...")
             app = launchSimpleApplication {
@@ -63,16 +76,35 @@ class Bot {
                 }
             )
 
+            LOGGER.info("OneBot is ok.")
+            ONEBOT.start()
+
+            insectData()
+            LOGGER.info("Insect data...")
+
             ModuleManager.perLoadModule()
             this.initAllEvents().let {
                 LOGGER.info("Init all module(s) event...")
             }
-
-            LOGGER.info("OneBot is ok.")
-            ONEBOT.start()
         }.onFailure {
             LOGGER.fatal("An error occurred while loading the system: ${it.message}")
             it.printStackTrace()
+        }
+    }
+
+    private suspend fun insectData(){
+        val botId = ONEBOT.userId.toLong()
+        if (botService.read(ONEBOT.userId.toLong()) == null) {
+            botService.add(botId)
+            LOGGER.info("Find new bot, added bot($botId) in database.")
+        }
+
+        ONEBOT.groupRelation.groups.toList().forEach {
+            val id = it.id.toLong()
+            if (groupService.read(id) == null) {
+                groupService.add(id)
+                LOGGER.info("Find new group, added group($id) in database.")
+            }
         }
     }
 
@@ -84,7 +116,7 @@ class Bot {
             return@let it
         }
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOlBiT29oelBVZzVHeHp3dnY=")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
         lateinit var ONEBOT: OneBotBot
     }
 }

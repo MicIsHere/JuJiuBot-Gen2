@@ -1,9 +1,12 @@
 package cn.cutemic.bot.module.impl.chat
 
 import cn.cutemic.bot.Bot
-import cn.cutemic.bot.data.context.AnswerEntry
-import cn.cutemic.bot.data.context.ContextEntry
+import cn.cutemic.bot.database.AnswerService
+import cn.cutemic.bot.database.ContextService
+import cn.cutemic.bot.model.context.AnswerEntry
+import cn.cutemic.bot.model.context.ContextEntry
 import kotlinx.coroutines.runBlocking
+import org.koin.java.KoinJavaComponent.inject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
@@ -11,6 +14,9 @@ import kotlin.concurrent.withLock
 class ContextCache {
     private val cache = ConcurrentHashMap<String, ContextEntry>()
     private val lock = ReentrantReadWriteLock()
+
+    private val contextService by inject<ContextService>(ContextService::class.java)
+    private val answerService by inject<AnswerService>(AnswerService::class.java)
 
     // 最小的上下文权重，小于这个值会被清理
     private val MIN_CONTEXT_COUNT = 5
@@ -20,7 +26,7 @@ class ContextCache {
     fun upsert(
         messageKeywords: String, // 发送消息的关键字
         replyKeywords: String, // 回答的关键字
-        groupId: Long,
+        groupId: String,
         message: String
     ) {
         lock.writeLock().withLock {
@@ -48,18 +54,19 @@ class ContextCache {
                 Bot.LOGGER.info("Update count: $oldAnswer -> ${answer.count}")
                 answer.messages.add(message)
                 answer.lastUsed = System.currentTimeMillis()
-            } else {
-                contextEntry.answers.add( //找不到就自己开一个吧
-                    AnswerEntry(
-                        keywords = replyKeywords,
-                        groupId = groupId,
-                        count = 1,
-                        messages = mutableListOf(message),
-                        lastUsed = System.currentTimeMillis()
-                    )
-                )
             }
-
+            contextEntry.answers.add( //找不到就自己开一个吧
+                AnswerEntry(
+                    keywords = replyKeywords,
+                    groupId = groupId,
+                    count = 1,
+                    messages = mutableListOf(message),
+                    lastUsed = System.currentTimeMillis()
+                ).let {
+                    Bot.LOGGER.info("Added new answer: $it")
+                    it
+                }
+            )
 
             contextEntry.count++
             contextEntry.lastUpdated = System.currentTimeMillis()
@@ -98,8 +105,18 @@ class ContextCache {
             if (cache.isEmpty()) {
                 return
             }
-            runBlocking {
-                // 数据置入
+            cache.values.forEach { context1 ->
+                runBlocking {
+                    val context = contextService.readIDByKeywords(context1.keywords) ?: contextService.add(context1)
+
+                    context1.answers.forEach {
+                        val answer = answerService.readIDByKeywords(it.keywords)
+
+                        if (answer == null) {
+                            answerService.add(it, context)
+                        }
+                    }
+                }
             }
             cache.clear()
         }

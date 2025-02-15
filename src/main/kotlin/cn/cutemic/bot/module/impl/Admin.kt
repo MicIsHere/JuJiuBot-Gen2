@@ -1,17 +1,18 @@
 package cn.cutemic.bot.module.impl
 
-import cn.cutemic.bot.Bot
+import cn.cutemic.bot.database.GroupService
 import cn.cutemic.bot.module.BotModule
 import cn.cutemic.bot.module.impl.chat.Chat
-import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.event.EventResult
-import love.forte.simbot.message.MessagesBuilder
 import love.forte.simbot.message.safePlainText
+import org.koin.java.KoinJavaComponent.inject
 
 object Admin: BotModule("管理","用于管理牛牛") {
 
     private val result = StringBuilder()
+
+    private val service by inject<GroupService>(GroupService::class.java)
 
     init {
         event {
@@ -27,11 +28,13 @@ object Admin: BotModule("管理","用于管理牛牛") {
                     val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
                     when (command) {
                         "sendmsgcache" -> {
-                            if (Chat.messageCache.get(groupId.toLong()).isEmpty()) {
+                            val group = service.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
+
+                            if (Chat.messageCache.get(group).isEmpty()) {
                                 result.append("该群的MessageCache为空。")
                                 return@on EventResult.empty()
                             }
-                            Chat.messageCache.get(groupId.toLong()).forEach {
+                            Chat.messageCache.get(group).forEach {
                                 result.append("$it\n")
                             }
                         }
