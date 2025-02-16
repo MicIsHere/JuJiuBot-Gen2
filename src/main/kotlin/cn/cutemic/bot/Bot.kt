@@ -28,10 +28,8 @@ import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.core.config.Configurator
 import org.koin.java.KoinJavaComponent.inject
 
-
 class Bot {
     private lateinit var app: SimpleApplication
-
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
 
@@ -116,7 +114,7 @@ class Bot {
             return@let it
         }
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOndINHlMaVNxTnZ2elhmM0E=")
         lateinit var ONEBOT: OneBotBot
     }
 }

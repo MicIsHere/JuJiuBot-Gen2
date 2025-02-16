@@ -2,7 +2,6 @@ package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.database.GroupService
 import cn.cutemic.bot.module.BotModule
-import cn.cutemic.bot.module.impl.chat.Chat
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.event.EventResult
 import love.forte.simbot.message.safePlainText
@@ -27,32 +26,6 @@ object Admin: BotModule("管理","用于管理牛牛") {
                 runCatching {
                     val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
                     when (command) {
-                        "sendmsgcache" -> {
-                            val group = service.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
-
-                            if (Chat.messageCache.get(group).isEmpty()) {
-                                result.append("该群的MessageCache为空。")
-                                return@on EventResult.empty()
-                            }
-                            Chat.messageCache.get(group).forEach {
-                                result.append("$it\n")
-                            }
-                        }
-
-                        "synccontext" -> {
-                            Chat.contextCache.sync()
-                        }
-
-                        "syncmsg" -> {
-                            Chat.messageCache.messageSyncToDatabase()
-                        }
-
-                        "sendsynctime" -> {
-                            Chat.messageCache.getLastSyncTime().forEach { (t, u) ->
-                                result.append("$t -> $u\n")
-                            }
-                        }
-
                         "crashtest" -> {
                             val nu11 = null
                             nu11!!

@@ -29,11 +29,24 @@ class ContextService(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
-    suspend fun readIDByKeywords(keywords: String): String?{
+    suspend fun getId(keywords: String): String?{
         return dbQuery {
             Context.selectAll()
                 .where(Context.keywords eq keywords)
                 .map { it[Context.id] }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun get(id: String): ContextEntry?{
+        return dbQuery {
+            Context.selectAll()
+                .where(Context.id eq id)
+                .map { ContextEntry(
+                    it[Context.keywords],
+                    it[Context.count],
+                    it[Context.lastUpdated]
+                ) }
                 .singleOrNull()
         }
     }
@@ -46,4 +59,13 @@ class ContextService(database: Database) {
             it[lastUpdated] = entry.lastUpdated
         }[Context.id]
     }
+
+    suspend fun update(id: String, entry: ContextEntry) = dbQuery {
+        Context.update({ Context.id eq id }) {
+            it[keywords] = entry.keywords
+            it[count] = entry.count
+            it[lastUpdated] = entry.lastUpdated
+        }
+    }
+
 }

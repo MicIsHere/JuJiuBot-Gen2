@@ -17,6 +17,7 @@ class KoinBootstrap {
     private fun database(): Module{
         return module{
             single{
+                Bot.LOGGER.info("Connect database...")
                 Database.connect(
                     "jdbc:pgsql://192.168.100.220:54321/jujiubot",
                     driver = "com.impossibl.postgres.jdbc.PGDriver",

@@ -1,5 +1,6 @@
 package cn.cutemic.bot.database
 
+import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.ContextService.Context
 import cn.cutemic.bot.model.context.AnswerEntry
 import kotlinx.coroutines.Dispatchers
@@ -12,11 +13,11 @@ import java.util.*
 class AnswerService(database: Database) {
     object Answer: Table("answer"){
         val id = varchar("id",36)
-        val keywords = text("keywords")
         val group = varchar("group",36)
         val count = integer("count")
         val lastUsed = long("last_used")
-        val context = reference("context_id", Context.id)  // 外键关联，简化操作
+        val context = reference("context", Context.id)
+        val message = reference("message", MessageService.Message.id)
 
         override val primaryKey = PrimaryKey(id)
     }
@@ -32,23 +33,27 @@ class AnswerService(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
-    suspend fun readIDByKeywords(keywords: String): String?{
+    // 使用上下文ID获取所有回答
+    suspend fun getAnswerByContextId(id: String): List<AnswerEntry>{
         return dbQuery {
             Answer.selectAll()
-                .where(Answer.keywords eq keywords)
-                .map { it[Answer.id] }
-                .singleOrNull()
+                .where(Answer.context eq id)
+                .map { AnswerEntry(it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
         }
     }
 
-    suspend fun add(entry: AnswerEntry, contextID: String): String = dbQuery {
+    // 添加一个回答
+    suspend fun add(entry: AnswerEntry): String = dbQuery {
         Answer.insert {
             it[id] = UUID.randomUUID().toString()
-            it[keywords] = entry.keywords
-            it[group] = entry.groupId
+            it[group] = entry.group
             it[count] = entry.count
             it[lastUsed] = entry.lastUsed
-            it[context] = contextID
-        }[Answer.id]
+            it[context] = entry.context
+            it[message] = entry.message
+        }[Answer.id].let {
+            Bot.LOGGER.info("Answer added to database $entry")
+            it
+        }
     }
 }

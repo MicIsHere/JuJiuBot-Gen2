@@ -1,8 +1,10 @@
 package cn.cutemic.bot.database
 
+import cn.cutemic.bot.Bot
 import cn.cutemic.bot.model.MessageExposed
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
@@ -32,20 +34,56 @@ class MessageService(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
-    suspend fun addMany(message: List<MessageExposed>) = dbQuery {
-        transaction {
-            Message.batchInsert(
-                message
-            ) { (groupID, userID, rawMessage, keywords, plainText, time, botID) ->
-                this[Message.id] = UUID.randomUUID().toString()
-                this[Message.bot] = botID
-                this[Message.group] = groupID
-                this[Message.user] = userID
-                this[Message.keywords] = keywords
-                this[Message.plainText] = plainText
-                this[Message.rawMessage] = rawMessage
-                this[Message.time] = time
-            }
+    suspend fun add(message: MessageExposed) = dbQuery {
+        Message.insert {
+            it[id] = UUID.randomUUID().toString()
+            it[bot] = message.botID
+            it[group] = message.groupID
+            it[user] = message.userID
+            it[keywords] = message.keywords
+            it[plainText] = message.plainText
+            it[rawMessage] = message.rawMessage
+            it[time] = message.time
+        }[Message.id].let {
+            Bot.LOGGER.info("Message added to database with ID: $it")
+            it
+        }
+    }
+
+    suspend fun read(id: String): MessageExposed?{
+        return dbQuery {
+            Message.selectAll()
+                .where(Message.id eq id)
+                .map { MessageExposed(
+                    it[Message.id],
+                    it[Message.group],
+                    it[Message.user],
+                    it[Message.rawMessage],
+                    it[Message.keywords],
+                    it[Message.plainText],
+                    it[Message.time],
+                    it[Message.bot]
+                ) }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun readListByGroupID(group: String): List<MessageExposed>{
+        return dbQuery {
+            Message.selectAll()
+                .where(Message.group eq group)
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
         }
     }
 }

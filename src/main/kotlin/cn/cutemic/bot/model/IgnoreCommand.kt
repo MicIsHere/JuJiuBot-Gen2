@@ -3,7 +3,9 @@ package cn.cutemic.bot.model
 object IgnoreCommand {
 
     val list = listOf(
-        "牛牛管理"
+        "牛牛管理",
+        "牛牛人品",
+        "牛牛塔罗牌"
     )
 
     fun equals(message: String): Boolean{

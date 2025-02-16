@@ -1,9 +1,9 @@
 package cn.cutemic.bot.model.context
 
 data class AnswerEntry(
-    val keywords: String,
-    val groupId: String,
+    val group: String,
     var count: Int,
-    val messages: MutableList<String>,
+    val context: String,
+    val message: String,
     var lastUsed: Long = System.currentTimeMillis(),
 )
