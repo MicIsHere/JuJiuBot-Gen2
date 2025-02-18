@@ -12,6 +12,7 @@ class ContextService(database: Database) {
     object Context: Table("context"){
         val id = varchar("id", 100)
         val keywords = text("keywords")
+        val keywordsWeight = text("keywords_weight")
         val count = integer("count")
         val lastUpdated = long("last_updated")
 
@@ -44,6 +45,7 @@ class ContextService(database: Database) {
                 .where(Context.id eq id)
                 .map { ContextEntry(
                     it[Context.keywords],
+                    it[Context.keywordsWeight],
                     it[Context.count],
                     it[Context.lastUpdated]
                 ) }
@@ -55,6 +57,7 @@ class ContextService(database: Database) {
         Context.insert {
             it[id] = UUID.randomUUID().toString()
             it[keywords] = entry.keywords
+            it[keywordsWeight] = entry.keywordsWeight
             it[count] = entry.count
             it[lastUpdated] = entry.lastUpdated
         }[Context.id]
@@ -63,6 +66,7 @@ class ContextService(database: Database) {
     suspend fun update(id: String, entry: ContextEntry) = dbQuery {
         Context.update({ Context.id eq id }) {
             it[keywords] = entry.keywords
+            it[keywordsWeight] = entry.keywordsWeight
             it[count] = entry.count
             it[lastUpdated] = entry.lastUpdated
         }

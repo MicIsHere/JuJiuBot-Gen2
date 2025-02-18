@@ -114,7 +114,7 @@ class Bot {
             return@let it
         }
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOndINHlMaVNxTnZ2elhmM0E=")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
         lateinit var ONEBOT: OneBotBot
     }
 }

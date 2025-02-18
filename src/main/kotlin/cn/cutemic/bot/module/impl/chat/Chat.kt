@@ -13,22 +13,32 @@ import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGro
 import love.forte.simbot.component.onebot.v11.core.utils.sendGroupTextMsgApi
 import love.forte.simbot.event.EventResult
 import org.koin.java.KoinJavaComponent.inject
+import java.util.concurrent.ThreadLocalRandom
+import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.min
 
 
 @OptIn(InternalOneBotAPI::class)
 object Chat: BotModule("聊天","与牛牛聊天") {
 
+    /* 运行时变量 */
+    private val random = ThreadLocalRandom.current() // 脱离线程随机
+    private val messageID = mutableListOf<String>() // 维护一个消息列表
+
+    /* 数据库相关变量 */
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
     private val contextService by inject<ContextService>(ContextService::class.java)
     private val answerService by inject<AnswerService>(AnswerService::class.java)
     private val messageService by inject<MessageService>(MessageService::class.java)
 
-    // 学习关键词的数量
-    private const val KEYWORD_SIZE = 2
-
-    // 维护一个消息列表
-    private val messageID = mutableListOf<String>()
+    /* 运行参数 */
+    private const val KEYWORD_SIZE = 2 // 学习关键词数量
+    private const val BASE_REPLY_PROB: Double = 0.4 // 基础回复概率
+    private const val TOPICS_IMPORTANCE: Double = 0.5    // 话题重要性
+    private const val SPLIT_PROBABILITY: Double = 0.3 // 回复分句概率
+    private const val IGNORE_LEARN: Double = 0.05 // 跳过学习概率
 
     init {
         event {
@@ -57,20 +67,35 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     group,
                     userId.value,
                     rawMessage,
-                    analyzeText(message),
+                    analyzeText(message).first,
                     message,
                     time.milliseconds,
                     bot
                 )
 
-                reply(chatData).let {
-                    if (it != null) {
-                        Bot.LOGGER.info("Send reply message: $it")
-                        Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, it))
-                    }
+                if (shouldLearn(message)) {
+                    learn(chatData)
                 }
 
-                learn(chatData)
+                reply(chatData).let { replyMessage ->
+                    if (replyMessage == null) {
+                        return@on EventResult.empty()
+                    }
+
+                    // 概率分割逗号并分句回复
+                    if (replyMessage.contains(",") && random.nextDouble() < SPLIT_PROBABILITY) {
+                        Bot.LOGGER.info("Spilt reply.")
+                        replyMessage
+                            .flatMap { replyMessage.split(",") }
+                            .forEach {
+                                Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, it))
+                            }
+                        return@on EventResult.empty()
+                    }
+
+                    Bot.LOGGER.info("Send reply message: $replyMessage")
+                    Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, replyMessage))
+                }
                 EventResult.invalid()
             }
         }
@@ -106,7 +131,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                         msg.userID == lastMessage.userID && msg.plainText != lastMessage.plainText // 复读检查
                     }?.let { foundMsg ->
                         val foundMessageKeyword = analyzeText(foundMsg.plainText!!)
-                        val contextID = insectContext(foundMessageKeyword)
+                        val contextID = insectContext(foundMessageKeyword.first, foundMessageKeyword.second)
                         answerService.add(AnswerEntry(
                             data.groupID,
                             1,
@@ -121,7 +146,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             }
         }
 
-        insectContext(analyzeText(lastMessage.plainText!!)).let {
+        val analysis1 = analyzeText(lastMessage.plainText!!)
+        insectContext(analysis1.first, analysis1.second).let {
             answerService.add(AnswerEntry(
                 data.groupID,
                 1,
@@ -132,9 +158,18 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
     }
 
-    private fun analyzeText(text: String): String{
+    /**
+     * 分析文本关键字
+     *
+     * 将会以TF-IDF，HanLP，原文本的顺序尝试分析文本。
+     *
+     * First为关键字，Second为权重。
+     */
+    private fun analyzeText(text: String): Pair<String, String>{
         val keywordList = Bot.TFIDF.analyze(text, KEYWORD_SIZE)
         val result = StringBuilder()
+        val weightResult = StringBuilder()
+        var count = 1 // size 跟 index 是不一样的
 
         if (keywordList.isEmpty()) {
             Bot.LOGGER.warn("TD-IDF Analyze is failed, trying use HanLp API...")
@@ -145,9 +180,16 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     throw NullPointerException("HanLp Analyze is failed")
                 }
                 list.forEach {
-                    result.append("${it.key} ")
+                    if (count == list.size) {
+                        count = 0
+                        result.append(it.key)
+                        weightResult.append(it.value)
+                        return Pair(result.toString(), weightResult.toString())
+                    }
+                    count++
+                    result.append("${it.key},")
+                    weightResult.append("${it.value},")
                 }
-                return result.toString()
             }.onFailure {
                 // HanLP分析失败 使用原文本当作上下文
                 Bot.LOGGER.error("HanLp Analyze is failed, use raw-text...")
@@ -155,45 +197,117 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             }
         } else {
             keywordList.forEach {
-                result.append("${it.name} ")
+                if (count == keywordList.size) {
+                    count = 0
+                    result.append(it.name)
+                    weightResult.append(it.tfidfvalue)
+                    return Pair(result.toString(), weightResult.toString())
+                }
+                count++
+                result.append("${it.name},")
+                weightResult.append("${it.tfidfvalue},")
             }
         }
-        return result.toString()
+        // 全部分析失败
+        return Pair(text, "1.0")
     }
 
-    private suspend fun reply(data: MessageExposed): String?{
-        Bot.LOGGER.info("Trying reply...")
-        if (data.plainText == null) {
-            return null
+    /**
+     * 判断是否需要学习。
+     *
+     * 将会过滤空消息，长度小于2的消息。
+     *
+     * 有5%的概率跳过学习。
+     */
+    private fun shouldLearn(message: String): Boolean {
+        return when {
+            message.isBlank() -> false
+            message.length < 2 -> false
+            random.nextDouble() < IGNORE_LEARN -> false // 5%概率跳过学习
+            else -> true
         }
+    }
 
-        if (data.plainText != "" && data.plainText.length < 2) {
+
+    /**
+     * 计算回复概率
+     *
+     * 由群组活跃度和基础回复概率进行计算
+     */
+    private fun calculateReplyProbability(groupActivity: Double): Double {
+        val adjustedProb = BASE_REPLY_PROB * groupActivity
+        return min(max(adjustedProb, 0.1), 0.8)
+    }
+
+    /**
+     * 输出一条最符合的AnswerEntry
+     *
+     * 使用传入的消息进行 加权随机选择
+     */
+    private suspend fun selectWeightedAnswer(data: MessageExposed): AnswerEntry? {
+        if (data.plainText == null || data.plainText != "" && data.plainText.length < 2) {
             return null
         }
 
         val contextId = contextService.getId(data.keywords) ?: return null
         val answerList = answerService.getAnswerByContextId(contextId)
+
         if (answerList.isEmpty()) {
             return null
         }
 
-        val messageID = answerList
-            .asReversed()
-            .minByOrNull { it.count }
-            ?.message
+        val weights = answerList.map { candidate ->
+            val timeDecay = exp(-(System.currentTimeMillis() - candidate.lastUsed) / 1_000_000.0)
+            val keywordList = contextService.get(candidate.context)!!.keywords.split(",")
+            val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split(",")
 
-        if (messageID == null) {
-            return null
+            var weightCount = 0
+            val topical = keywordList.sumOf {
+                keywordWeightList[weightCount]
+                weightCount++
+            }.let {
+                weightCount = 0
+                it
+            }
+
+            min(candidate.count.toDouble(), 10.0) +
+                    topical * TOPICS_IMPORTANCE +
+                    timeDecay
         }
 
-        return messageService.read(messageID)?.rawMessage
+        val totalWeight = weights.sum()
+        if (totalWeight <= 0) return null
+
+        val rand = random.nextDouble() * totalWeight
+        var accum = 0.0
+
+        answerList.forEachIndexed { index, candidate ->
+            accum += weights[index]
+            if (accum >= rand) return candidate
+        }
+        return answerList.last()
     }
 
-    private suspend fun insectContext(keyword: String): String{
+    /**
+     * 尝试回复
+     *
+     * 成功获取到回答后将返回String
+     */
+    private suspend fun reply(data: MessageExposed): String?{
+        Bot.LOGGER.info("Trying reply...")
+        val answer = selectWeightedAnswer(data) ?: return null
+        return messageService.read(answer.message)?.rawMessage
+    }
+
+    /**
+     * 向数据库置入上下文
+     */
+    private suspend fun insectContext(keyword: String, weight: String): String{
         var contextID = contextService.getId(keyword)
         if (contextID == null) {
             contextID = contextService.add(ContextEntry(
                 keywords = keyword,
+                keywordsWeight = weight,
                 count = 1,
                 lastUpdated = System.currentTimeMillis()
             ))
@@ -203,6 +317,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         val count = contextService.get(contextID)!!.count++
         contextService.update(contextID, ContextEntry(
             keywords = keyword,
+            keywordsWeight = weight,
             count = count,
             lastUpdated = System.currentTimeMillis()
         ))
