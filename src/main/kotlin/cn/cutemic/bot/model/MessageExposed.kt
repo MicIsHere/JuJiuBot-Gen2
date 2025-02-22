@@ -1,4 +1,5 @@
 package cn.cutemic.bot.model
+
 data class MessageExposed(
     val id: String?,
     val groupID: String,

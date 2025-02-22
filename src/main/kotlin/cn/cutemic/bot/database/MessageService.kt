@@ -68,6 +68,27 @@ class MessageService(database: Database) {
         }
     }
 
+    suspend fun readLastMessages(id: String, messageCount: Int): List<MessageExposed>{
+        return dbQuery {
+            Message.selectAll()
+                .where(Message.group eq id)
+                .sortedByDescending { Message.time }
+                .take(50)
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
+        }
+    }
+
     suspend fun readListByGroupID(group: String): List<MessageExposed>{
         return dbQuery {
             Message.selectAll()

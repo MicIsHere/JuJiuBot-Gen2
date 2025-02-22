@@ -40,7 +40,16 @@ object TaskManager {
         val job = TaskScope.launch {
             while (isActive) {
                 delay(interval * 1000)
-                method.call(obj)
+                runCatching {
+                    method.call(obj)
+                }.onFailure {
+                    if (it is IllegalStateException) {
+                        Bot.LOGGER.warn("Cannot invoke task ${obj.javaClass.`package`}, trying use 'null' args invoke.")
+                        method.call(obj, null)
+                        return@launch
+                    }
+                    throw it
+                }
             }
         }
         jobs.add(job)

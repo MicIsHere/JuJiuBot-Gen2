@@ -1,5 +1,6 @@
 package cn.cutemic.bot.database
 
+import cn.cutemic.bot.model.GroupExposed
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -11,6 +12,7 @@ class GroupService(database: Database) {
     object Group: Table("group"){
         val id = varchar("id",36)
         val group = long("group")
+        val activity = double("activity").default(0.0)
 
         override val primaryKey = PrimaryKey(id)
     }
@@ -26,19 +28,42 @@ class GroupService(database: Database) {
     suspend fun <T> dbQuery(block: suspend () -> T): T =
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
-    suspend fun add(id: Long): String = dbQuery {
+    suspend fun add(groupExposed: GroupExposed): String = dbQuery {
         Group.insert {
-            it[group] = id
-            it[Group.id] = UUID.randomUUID().toString()
+            it[group] = groupExposed.group
+            it[id] = UUID.randomUUID().toString()
+            it[activity] = groupExposed.activity
         }[Group.id]
     }
 
-    suspend fun read(id: Long): String?{
+    suspend fun read(id: Long): GroupExposed?{
         return dbQuery {
             Group.selectAll()
                 .where(Group.group eq id)
-                .map { it[Group.id] }
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
                 .singleOrNull()
+        }
+    }
+
+    suspend fun read(id: String): GroupExposed?{
+        return dbQuery {
+            Group.selectAll()
+                .where(Group.id eq id)
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun readAll(): List<GroupExposed>{
+        return dbQuery {
+            Group.selectAll()
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
+        }
+    }
+
+    suspend fun updateActivity(id: String, activity: Double) = dbQuery {
+        Group.update({ Group.id eq id }) {
+            it[Group.activity] = activity
         }
     }
 }

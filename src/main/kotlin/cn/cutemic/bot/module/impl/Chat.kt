@@ -1,4 +1,4 @@
-package cn.cutemic.bot.module.impl.chat
+package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.*
@@ -7,6 +7,8 @@ import cn.cutemic.bot.model.MessageExposed
 import cn.cutemic.bot.model.context.AnswerEntry
 import cn.cutemic.bot.model.context.ContextEntry
 import cn.cutemic.bot.module.BotModule
+import cn.cutemic.bot.util.Task
+import kotlinx.coroutines.runBlocking
 import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.common.annotations.InternalOneBotAPI
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
@@ -14,10 +16,7 @@ import love.forte.simbot.component.onebot.v11.core.utils.sendGroupTextMsgApi
 import love.forte.simbot.event.EventResult
 import org.koin.java.KoinJavaComponent.inject
 import java.util.concurrent.ThreadLocalRandom
-import kotlin.math.exp
-import kotlin.math.max
-import kotlin.math.min
-
+import kotlin.math.*
 
 @OptIn(InternalOneBotAPI::class)
 object Chat: BotModule("聊天","与牛牛聊天") {
@@ -36,7 +35,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     /* 运行参数 */
     private const val KEYWORD_SIZE = 2 // 学习关键词数量
     private const val BASE_REPLY_PROB: Double = 0.4 // 基础回复概率
-    private const val TOPICS_IMPORTANCE: Double = 0.5    // 话题重要性
+    private const val TOPICS_IMPORTANCE: Double = 0.5 // 话题重要性
     private const val SPLIT_PROBABILITY: Double = 0.3 // 回复分句概率
     private const val IGNORE_LEARN: Double = 0.05 // 跳过学习概率
 
@@ -45,26 +44,19 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             on<OneBotNormalGroupMessageEvent> {
                 val message = messageContent.plainText ?: ""
                 val bot = botService.read(bot.userId.toLong()) ?: throw NullPointerException("Cannot get bot-id in database.")
-                val group = groupService.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
-
-                if (message.length <= 2) {
-                    Bot.LOGGER.info("Message($message) too short or not text, ignore.")
-                    return@on EventResult.invalid()
-                }
+                val groupExposed = groupService.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
 
                 if (rawMessage.startsWith("[CQ:")) {
-                    Bot.LOGGER.error("Message have CQ-Code, ignore.")
                     return@on EventResult.invalid()
                 }
 
                 if (IgnoreCommand.equals(message)) {
-                    Bot.LOGGER.info("Message($message) is command, ignore.")
                     return@on EventResult.invalid()
                 }
 
                 val chatData = MessageExposed(
                     null,
-                    group,
+                    groupExposed.id!!,
                     userId.value,
                     rawMessage,
                     analyzeText(message).first,
@@ -75,6 +67,10 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
                 if (shouldLearn(message)) {
                     learn(chatData)
+                }
+
+                if (random.nextDouble() >= calculateReplyProbability(groupService.read(groupExposed.id)?.activity ?: 0.0)) { // 查找回复概率
+                    return@on EventResult.empty()
                 }
 
                 reply(chatData).let { replyMessage ->
@@ -96,7 +92,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     Bot.LOGGER.info("Send reply message: $replyMessage")
                     Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, replyMessage))
                 }
-                EventResult.invalid()
+                EventResult.empty()
             }
         }
     }
@@ -104,7 +100,6 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     private suspend fun learn(data: MessageExposed){
         // 获取群里的上一条发言 当作现在处理这条消息的(问题)
         if (messageID.isEmpty()) {
-            Bot.LOGGER.info("Context is empty, ignore.")
             messageService.add(data).let {
                 messageID.add(it)
             }
@@ -125,7 +120,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             runCatching {
                 messageService.readListByGroupID(data.groupID)
                     .asReversed()
-                    .take(2)
+                    .take(3)
                     .firstOrNull { msg ->
                         requireNotNull(msg.userID) { "Invalid user ID in message" }
                         msg.userID == lastMessage.userID && msg.plainText != lastMessage.plainText // 复读检查
@@ -217,17 +212,16 @@ object Chat: BotModule("聊天","与牛牛聊天") {
      *
      * 将会过滤空消息，长度小于2的消息。
      *
-     * 有5%的概率跳过学习。
+     * 有概率跳过学习。
      */
     private fun shouldLearn(message: String): Boolean {
         return when {
             message.isBlank() -> false
             message.length < 2 -> false
-            random.nextDouble() < IGNORE_LEARN -> false // 5%概率跳过学习
+            random.nextDouble() < IGNORE_LEARN -> false // 概率跳过学习
             else -> true
         }
     }
-
 
     /**
      * 计算回复概率
@@ -324,4 +318,41 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         return contextID
     }
 
+    /**
+     * 每半小时计算一次群聊活跃度
+     */
+    @Task(60 * 30)
+    private fun calcGroupActivity(){
+        runBlocking {
+            Bot.LOGGER.info("Start calc group activity...")
+            groupService.readAll().forEach {
+                val messages = messageService.readLastMessages(it.id!!, 50).let {
+                    Bot.LOGGER.info("Read message ${it.size}")
+                    it
+                }
+                if (messages.size < 2) {
+                    groupService.updateActivity(it.id, 0.0)
+                    return@forEach
+                }
+
+                // 计算时间跨度（秒）
+                val timeSpan = (messages.first().time - messages.last().time) / 1000.0
+                val msgRate = messages.size / max(timeSpan, 1.0)
+
+                // 计算用户多样性
+                val uniqueUsers = messages.map { it.userID }.toSet().size
+                val diversityFactor = 1 + 0.05 * uniqueUsers
+
+                // 计算时间衰减（分钟）
+                val lastMsgAgeMin = (System.currentTimeMillis() - messages.first().time) / 60000.0
+                val timeDecay = 1.0 / (lastMsgAgeMin + 1)
+                groupService.updateActivity(it.id, (msgRate * diversityFactor * timeDecay).roundTo(2))
+            }
+        }
+    }
+
+    private fun Double.roundTo(decimals: Int): Double {
+        val factor = 10.0.pow(decimals)
+        return (this * factor).roundToInt() / factor
+    }
 }
