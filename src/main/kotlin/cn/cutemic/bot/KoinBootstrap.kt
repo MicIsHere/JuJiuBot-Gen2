@@ -45,6 +45,10 @@ class KoinBootstrap {
             single {
                 ContextService(get())
             }
+
+            single {
+                BlockService(get())
+            }
         }
     }
 

@@ -8,10 +8,12 @@ import cn.cutemic.bot.manager.TaskManager
 import cn.cutemic.bot.model.GroupExposed
 import cn.cutemic.bot.module.impl.Chat.event
 import cn.cutemic.bot.util.KernelScope
+import cn.cutemic.bot.util.LegacyDatabaseMove
 import cn.cutemic.bot.util.runSynchronized
 import com.hankcs.hanlp.restful.HanLPClient
 import com.huaban.analysis.jieba.WordDictionary
 import com.huaban.analysis.jieba.viterbi.FinalSeg
+import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
 import kotlinx.coroutines.launch
@@ -33,6 +35,8 @@ import org.apache.logging.log4j.core.config.Configurator
 import org.koin.java.KoinJavaComponent.inject
 
 class Bot {
+    private val USE_LEGACY_DATABASE = false // 是否迁移旧版数据库(或Pallas-Bot的数据库)
+
     private lateinit var app: SimpleApplication
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
@@ -72,8 +76,8 @@ class Bot {
             ONEBOT = botManager.register(
                 OneBotBotConfiguration().apply {
                     // 这几个是必选属性
-                    /// 在OneBot组件中用于区分不同Bot的唯一ID， 建议可以直接使用QQ号。
-                    botUniqueId = "3938656042"
+                    // 在OneBot组件中用于区分不同Bot的唯一ID， 建议可以直接使用QQ号。
+                    botUniqueId = "2415838976"
                     apiServerHost = Url("http://127.0.0.1:7999")
                     eventServerHost = Url("ws://127.0.0.1:8080/onebot/v11/ws/")
                 }
@@ -84,6 +88,13 @@ class Bot {
 
             insectData()
             LOGGER.info("Insect data...")
+
+            if (USE_LEGACY_DATABASE) {
+                MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot").let {
+                    LOGGER.info("Connect MongoDB success.")
+                    LegacyDatabaseMove.transform(it)
+                }
+            }
 
             ModuleManager.perLoadModule()
             this.initAllEvents().let {

@@ -38,7 +38,16 @@ class AnswerService(database: Database) {
         return dbQuery {
             Answer.selectAll()
                 .where(Answer.context eq id)
-                .map { AnswerEntry(it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
+                .map { AnswerEntry(it[Answer.id], it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
+        }
+    }
+
+    suspend fun get(id: String): AnswerEntry?{
+        return dbQuery {
+            Answer.selectAll()
+                .where(Answer.id eq id)
+                .map { AnswerEntry(it[Answer.id], it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
+                .singleOrNull()
         }
     }
 
@@ -54,6 +63,17 @@ class AnswerService(database: Database) {
         }[Answer.id].let {
             Bot.LOGGER.info("Answer added to database $entry")
             it
+        }
+    }
+
+    suspend fun updateCount(answerID: String, count: Int) = dbQuery {
+        Answer.update({ Answer.id eq answerID }) {
+            it[id] = id
+            it[group] = group
+            it[Answer.count] = count
+            it[lastUsed] = lastUsed
+            it[context] = context
+            it[message] = message
         }
     }
 }

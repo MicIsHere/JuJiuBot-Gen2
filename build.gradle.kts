@@ -30,6 +30,9 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     runtimeOnly("io.ktor:ktor-client-java:2.3.13")
     testImplementation(kotlin("test"))
+
+    implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.3.0")
+    implementation("org.mongodb:bson-kotlinx:5.3.0")
 }
 
 tasks.test {

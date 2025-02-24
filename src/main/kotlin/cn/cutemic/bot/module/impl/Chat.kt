@@ -127,7 +127,13 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     }?.let { foundMsg ->
                         val foundMessageKeyword = analyzeText(foundMsg.plainText!!)
                         val contextID = insectContext(foundMessageKeyword.first, foundMessageKeyword.second)
+                        answerService.getAnswerByContextId(contextID).singleOrNull { it.message == lastMessage.id }?.let {
+                            answerService.updateCount(it.id!!, it.count++)
+                            return@runCatching
+                        }
+
                         answerService.add(AnswerEntry(
+                            null,
                             data.groupID,
                             1,
                             contextID,
@@ -142,11 +148,17 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
 
         val analysis1 = analyzeText(lastMessage.plainText!!)
-        insectContext(analysis1.first, analysis1.second).let {
+        insectContext(analysis1.first, analysis1.second).let { context ->
+            answerService.getAnswerByContextId(context).singleOrNull { it.message == lastMessage.id }?.let {
+                answerService.updateCount(it.id!!, it.count++)
+                return
+            }
+
             answerService.add(AnswerEntry(
+                null,
                 data.groupID,
                 1,
-                it,
+                context,
                 lastMessage.id!!,
                 System.currentTimeMillis()
             ))
@@ -182,8 +194,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                         return Pair(result.toString(), weightResult.toString())
                     }
                     count++
-                    result.append("${it.key},")
-                    weightResult.append("${it.value},")
+                    result.append("${it.key}|")
+                    weightResult.append("${it.value}|")
                 }
             }.onFailure {
                 // HanLP分析失败 使用原文本当作上下文
@@ -199,8 +211,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     return Pair(result.toString(), weightResult.toString())
                 }
                 count++
-                result.append("${it.name},")
-                weightResult.append("${it.tfidfvalue},")
+                result.append("${it.name}|")
+                weightResult.append("${it.tfidfvalue}|")
             }
         }
         // 全部分析失败
@@ -252,8 +264,8 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
         val weights = answerList.map { candidate ->
             val timeDecay = exp(-(System.currentTimeMillis() - candidate.lastUsed) / 1_000_000.0)
-            val keywordList = contextService.get(candidate.context)!!.keywords.split(",")
-            val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split(",")
+            val keywordList = contextService.get(candidate.context)!!.keywords.split("|")
+            val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split("|")
 
             var weightCount = 0
             val topical = keywordList.sumOf {
@@ -326,10 +338,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         runBlocking {
             Bot.LOGGER.info("Start calc group activity...")
             groupService.readAll().forEach {
-                val messages = messageService.readLastMessages(it.id!!, 50).let {
-                    Bot.LOGGER.info("Read message ${it.size}")
-                    it
-                }
+                val messages = messageService.readLastMessages(it.id!!, 50)
                 if (messages.size < 2) {
                     groupService.updateActivity(it.id, 0.0)
                     return@forEach

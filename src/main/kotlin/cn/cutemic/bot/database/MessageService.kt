@@ -50,6 +50,31 @@ class MessageService(database: Database) {
         }
     }
 
+    suspend fun addMany(message: List<MessageExposed>, ignoreError: Boolean, batchSize: Int = 1000) = dbQuery {
+        for (i in message.indices step batchSize) {
+            val batch = message.subList(i, minOf(i + batchSize, message.size))
+            runCatching {
+                Message.batchInsert(batch, ignoreError) { data ->
+                    this@batchInsert[Message.id] = UUID.randomUUID().toString()
+                    this@batchInsert[Message.bot] = cleanNullBytes(data.botID)!!
+                    this@batchInsert[Message.group] = cleanNullBytes(data.groupID)!!
+                    this@batchInsert[Message.user] = data.userID
+                    this@batchInsert[Message.keywords] = cleanNullBytes(data.keywords)!!
+                    this@batchInsert[Message.plainText] = cleanNullBytes(data.plainText)
+                    this@batchInsert[Message.rawMessage] = cleanNullBytes(data.rawMessage) ?: ""
+                    this@batchInsert[Message.time] = data.time
+                }.let {
+                    Bot.LOGGER.info("Success ${it.size}/$batchSize")
+                }
+            }.onFailure {
+                Bot.LOGGER.error("On batch $i failed.")
+                println(batch)
+                throw it
+            }
+        }
+    }
+
+
     suspend fun read(id: String): MessageExposed?{
         return dbQuery {
             Message.selectAll()
@@ -73,7 +98,7 @@ class MessageService(database: Database) {
             Message.selectAll()
                 .where(Message.group eq id)
                 .sortedByDescending { Message.time }
-                .take(50)
+                .take(messageCount)
                 .map {
                     MessageExposed(
                         it[Message.id],
@@ -106,5 +131,9 @@ class MessageService(database: Database) {
                     )
                 }
         }
+    }
+
+    private fun cleanNullBytes(input: String?): String? {
+        return input?.replace("\u0000", "") // 去掉所有的空字节字符
     }
 }
