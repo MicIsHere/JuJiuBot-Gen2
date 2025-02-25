@@ -27,6 +27,10 @@ class EventDSL {
                             if (groupService.read(messageEvent.groupId.toLong())!!.soberUpTime != null) { // 醉酒检查，阻断事件传递
                                 return@listen EventResult.empty()
                             }
+
+                            if (groupService.read(messageEvent.groupId.toLong())!!.blocked != null) { // 群封禁检查，阻断事件传递
+                                return@listen EventResult.empty()
+                            }
                         }
                     }
 
