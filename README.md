@@ -57,3 +57,5 @@
 
 ## 友情链接
 [QQ群聊：阿戈尔执政厅](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mUOOO_GjsS6naYrj5A-M-Qn9L98u7IBA&authKey=T1pEscv8DX60gCfwC0KUDKTsrO%2FJXXi0ygD46xhm7dp2rtxVrRFGlaSVCzQv8Wh6&noverify=0&group_code=801789472)
+
+[QQ群聊：菊酒屋](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=7dIESfgoVwgc4MMcN0ZMveHxdRAqC0k6&authKey=fAcXmfNAxGbS%2FyiDcLTNT8Opd0o0VPg1hDuVCrSBpTZmpT%2Fk7RULsJwM0H1eHG%2F9&noverify=0&group_code=248249482)
