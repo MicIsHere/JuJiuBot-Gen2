@@ -120,7 +120,7 @@ class Bot {
             val id = it.id.toLong()
             groupCache.add(it.id.toLong())
             if (groupService.read(id) == null) {
-                groupService.add(GroupExposed(null, id, 0.0))
+                groupService.add(GroupExposed(null, id, 0.0,0.0,null, null))
                 LOGGER.info("Find new group, added group($id) in database.")
             }
         }
@@ -131,7 +131,7 @@ class Bot {
             on<OneBotNormalGroupMessageEvent> {
                 if (!groupCache.contains(groupId.toLong())) {
                     groupCache.add(groupId.toLong())
-                    groupService.add(GroupExposed(null, groupId.toLong(), 0.0))
+                    groupService.add(GroupExposed(null, groupId.toLong(), 0.0,0.0,null, null))
                     LOGGER.info("Find new group on runtime, added group($id) in database.")
                 }
                 return@on EventResult.empty()

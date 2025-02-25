@@ -13,6 +13,9 @@ class GroupService(database: Database) {
         val id = varchar("id",36)
         val group = long("group")
         val activity = double("activity").default(0.0)
+        val drunk = double("drunk").default(0.0)
+        val soberUpTime = long("soberup_time").nullable()
+        val blocked = long("blocked").nullable()
 
         override val primaryKey = PrimaryKey(id)
     }
@@ -40,7 +43,7 @@ class GroupService(database: Database) {
         return dbQuery {
             Group.selectAll()
                 .where(Group.group eq id)
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
                 .singleOrNull()
         }
     }
@@ -49,7 +52,7 @@ class GroupService(database: Database) {
         return dbQuery {
             Group.selectAll()
                 .where(Group.id eq id)
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
                 .singleOrNull()
         }
     }
@@ -57,13 +60,25 @@ class GroupService(database: Database) {
     suspend fun readAll(): List<GroupExposed>{
         return dbQuery {
             Group.selectAll()
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity]) }
+                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
         }
     }
 
     suspend fun updateActivity(id: String, activity: Double) = dbQuery {
         Group.update({ Group.id eq id }) {
             it[Group.activity] = activity
+        }
+    }
+
+    suspend fun updateDrunk(id: String, drunk: Double) = dbQuery {
+        Group.update({ Group.id eq id }) {
+            it[Group.drunk] = drunk
+        }
+    }
+
+    suspend fun updateSoberUpTime(id: String, time: Long?) = dbQuery {
+        Group.update({ Group.id eq id }) {
+            it[Group.soberUpTime] = time
         }
     }
 }
