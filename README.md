@@ -1,7 +1,9 @@
 ![JuJiuBot-Gen2](https://socialify.git.ci/MicIsHere/JuJiuBot-Gen2/image?custom_description=%E4%BD%BF%E7%94%A8+Kotlin+%E7%BC%96%E5%86%99%E7%9A%84%E7%AC%AC%E4%BA%8C%E4%BB%A3%E8%8F%8A%E9%85%92%E7%89%9B%E7%89%9B%EF%BC%8C%E9%AB%98%E6%80%A7%E8%83%BD%E3%80%81%E9%AB%98%E5%8F%AF%E9%9D%A0%E6%80%A7%E3%80%82%0A%E6%BA%90%E4%BA%8E+Pallas-Bot%E3%80%82&description=1&language=1&name=1&owner=1&pattern=Plus&theme=Light)
 
 # JuJiuBot Gen2 - 菊酒牛牛
-来自菊酒屋的高性能萝卜子（机器人）
+我是来自米诺斯的祭司帕拉斯，会在罗德岛休息一段时间......
+
+虽然这么说，我渴望以美酒和戏剧被招待，更渴望走向战场。
 
 ## 警告
 该项目仍处于 **极早期开发状态**。
@@ -24,7 +26,6 @@
 [Pallas-Bot](https://github.com/MistEO/Pallas-Bot): 《明日方舟》帕拉斯 Bot，同时也是本项目的前身。
 
 ### 基础库
-
 [Simple Robot](https://github.com/simple-robot/simpler-robot): 一个 Bot 风格的 Kotlin 多平台事件调度框架。
 
 [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core): 一个基于纯 C# 的 NTQQ 协议实现。
@@ -51,3 +52,8 @@
 [Origin Technology](https://github.com/Origin-Technology): 为其提供基础网络服务
 
 π_d2R: 为其提供牛牛头像
+
+风风是喵不是猫: 为其提供牛牛酒后对话人设
+
+## 友情链接
+[QQ群聊：阿戈尔执政厅](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mUOOO_GjsS6naYrj5A-M-Qn9L98u7IBA&authKey=T1pEscv8DX60gCfwC0KUDKTsrO%2FJXXi0ygD46xhm7dp2rtxVrRFGlaSVCzQv8Wh6&noverify=0&group_code=801789472)
