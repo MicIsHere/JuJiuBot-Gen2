@@ -35,7 +35,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
                 }
                 if (goToSleep) {
                     // 3.5 是期望的最大醉酒程度
-                    val sleepDuration = (minOf(group.drunk, 3.5) + random.nextDouble()) * 800
+                    val sleepDuration = (minOf(group.drunk, 3.5) + random.nextDouble()) * 80
                     Bot.LOGGER.info("Bot go to sleep in group $groupId, wake up after $sleepDuration sec")
                     reply("呀，博士。你今天走起路来，怎么看着摇...摇...晃......")
                     reply("Zzz...")

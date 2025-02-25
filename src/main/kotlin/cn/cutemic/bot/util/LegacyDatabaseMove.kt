@@ -39,17 +39,23 @@ object LegacyDatabaseMove {
 
         val lists = message.keywords.split(" ")
         var count = 1
-        lists.forEach {
-            if (count == lists.size){
-                keywords.append(it)
-                count = 1
-            } else {
-                keywords.append("$it|")
-                count++
+
+        if (!message.rawMessage.startsWith("[CQ:") && !message.rawMessage.endsWith("]")) {
+            lists.forEach {
+                if (count == lists.size) {
+                    keywords.append(it)
+                    count = 1
+                } else {
+                    keywords.append("$it|")
+                    count++
+                }
             }
         }
 
-        list.add(MessageExposed(null, group, message.userID.toLong(), message.rawMessage, keywords.toString(), plainText, message.time.toLong(), "516b191e-d250-42ab-b08e-3ff8d073397e"))
+        keywords.clear()
+        keywords.append(message.rawMessage)
+
+        list.add(MessageExposed(null, group, message.userID.toLong(), message.rawMessage, keywords.toString(), plainText, "${message.time}000".toLong(), "516b191e-d250-42ab-b08e-3ff8d073397e"))
     }
 
     fun transform(database: MongoDatabase){
