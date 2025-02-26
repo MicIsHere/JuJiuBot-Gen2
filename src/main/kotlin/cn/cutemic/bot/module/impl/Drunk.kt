@@ -62,7 +62,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
                 .forEach {
                     service.updateDrunk(it.id!!, it.drunk - random.nextDouble(0.1,0.3))
                     val time = it.soberUpTime ?: return@runBlocking
-                    if (time < 60) {
+                    if (time <= 60) {
                         service.updateSoberUpTime(it.id, null)
                         return@runBlocking
                     }
