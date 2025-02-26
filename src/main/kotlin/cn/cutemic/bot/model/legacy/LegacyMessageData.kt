@@ -2,6 +2,7 @@ package cn.cutemic.bot.model.legacy
 
 import org.bson.codecs.pojo.annotations.BsonProperty
 
+@Deprecated("该数据类仅可用于迁移旧版数据库")
 data class LegacyMessageData(
     @BsonProperty("group_id")
     val groupID: String,
