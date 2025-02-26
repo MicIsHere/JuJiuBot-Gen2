@@ -23,29 +23,19 @@ object Admin: BotModule("管理","用于管理牛牛") {
                 result.clear()
                 result.append("操作成功完成。\n")
 
-                runCatching {
-                    val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
-                    when (command) {
-                        "crashtest" -> {
-                            val nu11 = null
-                            nu11!!
-                        }
+                val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
+                when (command) {
+                    "crashtest" -> {
+                        val nu11 = null
+                        nu11!!
+                    }
 
-                        else -> {
-                            result.append("没有该指令。")
-                        }
+                    else -> {
+                        result.append("没有该指令。")
                     }
-                }.onFailure {
-                    val stackTrace = StringBuilder()
-                    it.stackTrace.forEach {
-                        stackTrace.append("在 ${it.className}.${it.methodName}:${it.lineNumber}\n")
-                    }
-                    reply("操作出现错误 (${it.message})：$it\n${stackTrace}")
-                    it.printStackTrace()
-                }.onSuccess {
-                    reply(result.toString())
                 }
 
+                reply(result.toString())
                 EventResult.empty()
             }
         }
