@@ -14,7 +14,7 @@ class MessageService(database: Database) {
         val id = varchar("id",36)
         val bot = varchar("bot",36)
         val group = varchar("group",36)
-        val user = long("user_id")
+        val user = long("user_id").nullable() // 兼容旧版数据库
         val keywords = text("keywords")
         val plainText = text("plain_text").nullable()
         val rawMessage = text("raw_message")
@@ -135,5 +135,24 @@ class MessageService(database: Database) {
 
     private fun cleanNullBytes(input: String?): String? {
         return input?.replace("\u0000", "") // 去掉所有的空字节字符
+    }
+
+    @Deprecated("该函数仅可用于迁移旧版数据库")
+    suspend fun searchMessageOnLegacyDatabaseTransform(groupID: String, message: String, time: Long): MessageExposed?{
+        return dbQuery {
+            Message.selectAll()
+                .where((Message.group eq groupID) and (Message.rawMessage eq message) and (Message.time eq time))
+                .map { MessageExposed(
+                    it[Message.id],
+                    it[Message.group],
+                    it[Message.user],
+                    it[Message.rawMessage],
+                    it[Message.keywords],
+                    it[Message.plainText],
+                    it[Message.time],
+                    it[Message.bot]
+                ) }
+                .singleOrNull()
+        }
     }
 }
