@@ -34,11 +34,11 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
     /* 运行参数 */
     private const val KEYWORD_SIZE: Int = 2 // 学习关键词数量
+    private const val CROSS_GROUP_THRESHOLD: Int = 2 // N 个群有相同的回复，就跨群作为全局回复
     private const val BASE_REPLY_PROB: Double = 0.4 // 基础回复概率
     private const val TOPICS_IMPORTANCE: Double = 0.5 // 话题重要性
     private const val SPLIT_PROBABILITY: Double = 0.3 // 回复分句概率
     private const val IGNORE_LEARN: Double = 0.05 // 跳过学习概率
-    private const val CROSS_GROUP_THRESHOLD: Int = 2 // N 个群有相同的回复，就跨群作为全局回复
 
     init {
         event {
