@@ -23,7 +23,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
 
     /* 运行时变量 */
     private val random = ThreadLocalRandom.current() // 脱离线程随机
-    private val messageID = mutableListOf<String>() // 维护一个消息列表
+    private val messageID = mutableListOf<Pair<String, String>>() // 维护一个消息列表
 
     /* 数据库相关变量 */
     private val groupService by inject<GroupService>(GroupService::class.java)
@@ -101,15 +101,17 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         // 获取群里的上一条发言 当作现在处理这条消息的(问题)
         if (messageID.isEmpty()) {
             messageService.add(data).let {
-                messageID.add(it)
+                messageID.add(Pair(it, data.groupID))
             }
             return
         }
 
-        val lastMessage = messageService.read(messageID.last()) ?: throw NullPointerException("Cannot get last message in database.")
+        val lastMessageID = messageID.last { it.second == data.groupID }.first
+        val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
+
         // 添加这次发言的信息数据
         messageService.add(data).let {
-            messageID.add(it)
+            messageID.add(Pair(it, data.groupID))
         }
         // 复读检查
         if (lastMessage.plainText == data.plainText) {
@@ -262,7 +264,9 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             return null
         }
 
-        val weights = answerList.map { candidate ->
+        val weights = answerList
+            .filter { it.group == null || it.group == data.groupID }
+            .map { candidate ->
             val timeDecay = exp(-(System.currentTimeMillis() - candidate.lastUsed) / 1_000_000.0)
             val keywordList = contextService.get(candidate.context)!!.keywords.split("|")
             val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split("|")
