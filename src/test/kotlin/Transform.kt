@@ -6,8 +6,6 @@ import kotlinx.coroutines.flow.toList
 import org.bson.Document
 
 suspend fun main(){
-    val client = MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot")
-    val collection: MongoCollection<Document> = client.getCollection("message")
     // bot_id
     // group_id
     // is_plain_text
@@ -15,6 +13,10 @@ suspend fun main(){
     // time
     // 以上均为需要转成String的列，因为不知道为什么他会混着类型存数据。。。
     val targetName = "time"
+    val targetListName = "message"
+
+    val client = MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot")
+    val collection: MongoCollection<Document> = client.getCollection(targetListName)
 
     println("Processing...")
     // 使用 updateMany 来批量更新数据类型
