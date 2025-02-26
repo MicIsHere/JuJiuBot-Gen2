@@ -33,11 +33,12 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     private val messageService by inject<MessageService>(MessageService::class.java)
 
     /* 运行参数 */
-    private const val KEYWORD_SIZE = 2 // 学习关键词数量
+    private const val KEYWORD_SIZE: Int = 2 // 学习关键词数量
     private const val BASE_REPLY_PROB: Double = 0.4 // 基础回复概率
     private const val TOPICS_IMPORTANCE: Double = 0.5 // 话题重要性
     private const val SPLIT_PROBABILITY: Double = 0.3 // 回复分句概率
     private const val IGNORE_LEARN: Double = 0.05 // 跳过学习概率
+    private const val CROSS_GROUP_THRESHOLD: Int = 2 // N 个群有相同的回复，就跨群作为全局回复
 
     init {
         event {
@@ -134,6 +135,22 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                             return@runCatching
                         }
 
+                        val allAnswer = answerService.getAnswerByContextId(contextID)
+                            .filter { it.group != data.groupID }
+                            .filter { it.message == lastMessage.id }
+                        if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
+                            allAnswer.forEach { answerService.delete(it.id!!) }
+                            answerService.add(AnswerEntry(
+                                null,
+                                null,
+                                1,
+                                contextID,
+                                lastMessage.id!!,
+                                System.currentTimeMillis()
+                            ))
+                            return@runCatching
+                        }
+
                         answerService.add(AnswerEntry(
                             null,
                             data.groupID,
@@ -153,6 +170,22 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         insectContext(analysis1.first, analysis1.second).let { context ->
             answerService.getAnswerByContextId(context).singleOrNull { it.message == lastMessage.id }?.let {
                 answerService.updateCount(it.id!!, it.count++)
+                return
+            }
+
+            val allAnswer = answerService.getAnswerByContextId(context)
+                .filter { it.group != data.groupID }
+                .filter { it.message == lastMessage.id }
+            if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
+                allAnswer.forEach { answerService.delete(it.id!!) }
+                answerService.add(AnswerEntry(
+                    null,
+                    null,
+                    1,
+                    context,
+                    lastMessage.id!!,
+                    System.currentTimeMillis()
+                ))
                 return
             }
 
@@ -341,7 +374,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     private fun calcGroupActivity(){
         runBlocking {
             Bot.LOGGER.info("Start calc group activity...")
-            groupService.readAll().forEach {
+            groupService.readAll().forEach { it ->
                 val messages = messageService.readLastMessages(it.id!!, 50)
                 if (messages.size < 2) {
                     groupService.updateActivity(it.id, 0.0)

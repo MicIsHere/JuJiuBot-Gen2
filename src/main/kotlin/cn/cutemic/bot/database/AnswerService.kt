@@ -13,7 +13,7 @@ import java.util.*
 class AnswerService(database: Database) {
     object Answer: Table("answer"){
         val id = varchar("id",36)
-        val group = varchar("group",36)
+        val group = varchar("group",36).nullable()
         val count = integer("count")
         val lastUsed = long("last_used")
         val context = reference("context", Context.id)
@@ -74,6 +74,12 @@ class AnswerService(database: Database) {
             it[lastUsed] = lastUsed
             it[context] = context
             it[message] = message
+        }
+    }
+
+    suspend fun delete(id: String) {
+        dbQuery {
+            Answer.deleteWhere { Answer.id.eq(id) }
         }
     }
 }
