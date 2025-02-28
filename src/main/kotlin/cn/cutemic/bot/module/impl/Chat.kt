@@ -2,7 +2,7 @@ package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.*
-import cn.cutemic.bot.model.IgnoreCommand
+import cn.cutemic.bot.util.IgnoreCommand
 import cn.cutemic.bot.model.MessageExposed
 import cn.cutemic.bot.model.context.AnswerEntry
 import cn.cutemic.bot.model.context.ContextEntry
@@ -107,7 +107,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             return
         }
 
-        val lastMessageID = messageID.last { it.second == data.groupID }.first
+        val lastMessageID = messageID.lastOrNull() { it.second == data.groupID }!!.first
         val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
 
         // 添加这次发言的信息数据
@@ -349,20 +349,24 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         var contextID = contextService.getId(keyword)
         if (contextID == null) {
             contextID = contextService.add(ContextEntry(
+                null,
                 keywords = keyword,
                 keywordsWeight = weight,
                 count = 1,
-                lastUpdated = System.currentTimeMillis()
+                lastUpdated = System.currentTimeMillis(),
+                null
             ))
             return contextID
         }
         Bot.LOGGER.info("Update context count.")
         val count = contextService.get(contextID)!!.count++
-        contextService.update(contextID, ContextEntry(
+        contextService.update(ContextEntry(
+            contextID,
             keywords = keyword,
             keywordsWeight = weight,
             count = count,
-            lastUpdated = System.currentTimeMillis()
+            lastUpdated = System.currentTimeMillis(),
+            null
         ))
         return contextID
     }

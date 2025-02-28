@@ -1,4 +1,4 @@
-package cn.cutemic.bot.model
+package cn.cutemic.bot.util
 
 object IgnoreCommand {
 

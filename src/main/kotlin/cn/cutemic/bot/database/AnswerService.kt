@@ -3,6 +3,7 @@ package cn.cutemic.bot.database
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.ContextService.Context
 import cn.cutemic.bot.model.context.AnswerEntry
+import cn.cutemic.bot.model.context.ContextEntry
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -10,6 +11,7 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
+// 链接回答和上下文
 class AnswerService(database: Database) {
     object Answer: Table("answer"){
         val id = varchar("id",36)
@@ -80,6 +82,28 @@ class AnswerService(database: Database) {
     suspend fun delete(id: String) {
         dbQuery {
             Answer.deleteWhere { Answer.id.eq(id) }
+        }
+    }
+
+    suspend fun addMany(message: List<AnswerEntry>, ignoreError: Boolean, batchSize: Int = 1000) = dbQuery {
+        for (i in message.indices step batchSize) {
+            val batch = message.subList(i, minOf(i + batchSize, message.size))
+            runCatching {
+                Answer.batchInsert(batch, ignoreError, shouldReturnGeneratedValues = false) { data ->
+                    this@batchInsert[Answer.id] = UUID.randomUUID().toString()
+                    this@batchInsert[Answer.group] = data.group
+                    this@batchInsert[Answer.count] = data.count
+                    this@batchInsert[Answer.lastUsed] = data.lastUsed
+                    this@batchInsert[Answer.context] = data.context
+                    this@batchInsert[Answer.message] = data.message
+                }.let { message ->
+                    Bot.LOGGER.info("Success ${message.size}/$batchSize")
+                }
+            }.onFailure {
+                Bot.LOGGER.error("On batch $i failed.")
+                println(batch)
+                throw it
+            }
         }
     }
 }

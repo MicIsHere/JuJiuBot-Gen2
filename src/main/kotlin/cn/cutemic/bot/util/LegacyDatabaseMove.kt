@@ -2,18 +2,20 @@ package cn.cutemic.bot.util
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.*
+import cn.cutemic.bot.model.fast.FastMessageExposed
 import cn.cutemic.bot.model.MessageExposed
 import cn.cutemic.bot.model.context.AnswerEntry
 import cn.cutemic.bot.model.context.ContextEntry
+import cn.cutemic.bot.model.fast.FastContextEntry
 import cn.cutemic.bot.model.legacy.LegacyMessageData
 import cn.cutemic.bot.model.legacy.context.LegacyContext
-import cn.cutemic.bot.module.impl.Chat
+import cn.cutemic.bot.model.legacy.context.fast.FastLegacyContext
 import com.mongodb.kotlin.client.coroutine.MongoDatabase
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.runBlocking
 import org.koin.java.KoinJavaComponent.inject
+import java.util.*
+import kotlin.system.exitProcess
 
 object LegacyDatabaseMove {
 
@@ -25,6 +27,21 @@ object LegacyDatabaseMove {
 
     private val messageList = mutableListOf<MessageExposed>()
     private val groupCache = mutableMapOf<Long,String>()
+    private val contextList = mutableListOf<ContextEntry>()
+    private val answerList = mutableListOf<AnswerEntry>()
+
+    fun transform(database: MongoDatabase){
+        runBlocking {
+            groupService.readAll().forEach {
+                groupCache[it.group] = it.id!!
+            }
+        }
+
+//        message(database)
+//        contextMessage(database)
+//        context(database)
+        answer(database)
+    }
 
     private fun processMessage(message: LegacyMessageData) {
         Bot.LOGGER.info("Processing message...")
@@ -60,16 +77,7 @@ object LegacyDatabaseMove {
             keywords.append(message.rawMessage)
         }
 
-        messageList.add(MessageExposed(null, group, message.userID.toLong(), message.rawMessage, keywords.toString(), plainText, "${message.time}000".toLong(), "516b191e-d250-42ab-b08e-3ff8d073397e"))
-    }
-
-    fun transform(database: MongoDatabase){
-        runBlocking {
-            groupService.readAll().forEach {
-                groupCache[it.group] = it.id!!
-            }
-        }
-        context(database)
+        messageList.add(MessageExposed(null, group, message.userID.toLong(), message.rawMessage, keywords.toString(), plainText, "${message.time}000".toLong(), "0041cafe-210b-4d38-ba48-19674dbb74aa"))
     }
 
     private fun message(database: MongoDatabase){
@@ -88,105 +96,169 @@ object LegacyDatabaseMove {
             }
             jobs.awaitAll()
 
-            Bot.LOGGER.info("${messageList.size} need add, posting request...")
+            Bot.LOGGER.info("${messageList.size} message(s) need add, posting request...")
             messageService.addMany(messageList, false, 100000)
         }
     }
 
     private fun context(database: MongoDatabase){
-        Bot.LOGGER.info("Processing context...")
-        var count = 0
         runBlocking {
             val contexts = database.getCollection<LegacyContext>("context").find().toList()
-            Bot.LOGGER.info("${contexts.size} need add, posting request...")
             // 并发处理所有消息
             val jobs = contexts.map { context ->
-                println("Success $count/${contexts.size}")
-                processContext(context)
-                count++
+                async {
+                    processContext(context)
+                }
             }
+            jobs.awaitAll()
+
+            Bot.LOGGER.info("${contexts.size} context(s) need add, posting request...")
+            contextService.addMany(contextList, false, 10000)
         }
     }
 
     private fun processContext(context: LegacyContext){
-        runBlocking {
-            val lists = context.keywords.split(" ")
-            var count = 1
-            val keywords = StringBuilder()
-            val weight = StringBuilder()
+        Bot.LOGGER.info("Processing context(${context.id})...")
+            val keywordList = context.keywords.split(" ")
+            val keywords = keywordList.joinToString("|")
+            val weights = List(keywordList.size) { "1.0" }.joinToString("|")
 
-            lists.forEach {
-                if (count == lists.size) {
-                    keywords.append(it)
-                    weight.append("1.0")
-                    count = 1
-                } else {
-                    keywords.append("$it|")
-                    weight.append("1.0|")
-                    count++
+            contextList.add(ContextEntry(
+                null,
+                keywords,
+                weights,
+                context.count,
+                ("${context.clearTime}000".toLongOrNull() ?: "${context.time}000".toLong()),
+                context.id.toString()
+            ))
+    }
+
+    private fun contextMessage(database: MongoDatabase){
+        runBlocking {
+            val contexts = database.getCollection<LegacyContext>("context").find().toList()
+            val messages = messageService.fastReadAll()
+            // 并发处理所有消息
+            Bot.LOGGER.info("Loaded ${messages.size}[${contexts.size} Async] message, added to cache")
+            val jobs = contexts.map { context ->
+                async {
+                    processContextMessage(context, messages)
                 }
             }
+            jobs.awaitAll()
 
-            val contextID = contextService.add(ContextEntry(
-                keywords.toString(),
-                weight.toString(),
-                context.count,
-                ("${context.clearTime}000".toLongOrNull() ?: "${context.time}000".toLong())
-            ))
+            Bot.LOGGER.info("${contexts.size} context-message(s) need add, posting request...")
+            messageService.addMany(messageList, false, 10000)
+            exitProcess(0)
+        }
+    }
 
-            Bot.LOGGER.info("Context added: $contextID")
+    private fun processContextMessage(context: LegacyContext, allMessage: List<FastMessageExposed>){
+        context.answers.forEach { answer ->
+            val groupID = groupCache[answer.groupID] ?: return
+            answer.messages.forEach { message ->
+                val message1 = allMessage
+                    .asSequence()
+                    .filter { it.groupID.equals(groupID) && it.rawMessage.equals(message) }
+                    .singleOrNull { it.time.equals("${answer.time}000".toLong()) }
 
-            context.answers.forEach { answer ->
-                answer.messages.forEach { messages ->
-                    var id: MessageExposed? = messageService.searchMessageOnLegacyDatabaseTransform(
-                        groupCache[answer.groupID]?: return@runBlocking,
-                        messages,
-                        "${answer.time}000".toLong())
-
-                    if (id == null) {
-                        Bot.LOGGER.info("Cannot find message, new!")
-                        id = messageService.read(
-                            messageService.add(MessageExposed(
-                                null,
-                                groupCache[answer.groupID]!!,
-                                null,
-                                messages,
-                                keywords.toString(),
-                                messages,
-                                "${answer.time}000".toLong(),
-                                "516b191e-d250-42ab-b08e-3ff8d073397e"
-                            ))
-                        )!!
-                    }
-
-                    val allAnswer = answerService.getAnswerByContextId(contextID)
-                        .filter { it.group != id.groupID }
-                        .filter { it.message == id.id }
-
-                    if (allAnswer.size >= 2) {
-                        Bot.LOGGER.info("Add anything message!")
-                        allAnswer.forEach { answerService.delete(it.id!!) }
-                        answerService.add(AnswerEntry(
-                            null,
-                            null,
-                            answer.count,
-                            contextID,
-                            id.id!!,
-                            "${answer.time}000".toLong(),
-                        ))
-                        return@runBlocking
-                    }
-
-                    answerService.add(AnswerEntry(
+                if (message1 == null) {
+                    val keywordList = context.keywords.split(" ")
+                    val keywords = keywordList.joinToString("|")
+                    messageList.add(MessageExposed(
                         null,
                         groupCache[answer.groupID]!!,
-                        answer.count,
-                        contextID,
-                        id.id!!,
+                        null,
+                        message,
+                        keywords,
+                        message,
                         "${answer.time}000".toLong(),
+                        "0041cafe-210b-4d38-ba48-19674dbb74aa"
                     ))
+                    Bot.LOGGER.info("Added message by context...")
                 }
             }
+        }
+    }
+
+    private fun answer(database: MongoDatabase){
+        val jobs = mutableListOf<Job>()
+        runBlocking {
+            val fastLegacyContexts = mutableListOf<FastLegacyContext>()
+            database.getCollection<LegacyContext>("context").find().toList().forEach {
+                fastLegacyContexts.add(FastLegacyContext(
+                    it.id.toString(),
+                    it.keywords,
+                    it.time,
+                    it.count,
+                    it.answers,
+                    it.clearTime,
+                    it.ban
+                ))
+            }
+            Bot.LOGGER.info("Loaded ${fastLegacyContexts.size} context(fast), added to cache")
+
+            val messages = messageService.fastReadAll()
+            val newContexts = contextService.fastReadAll()
+
+            // 并发处理所有消息
+            Bot.LOGGER.info("Loaded ${messages.size} message, added to cache")
+            Bot.LOGGER.info("Loaded ${newContexts.size}[${fastLegacyContexts.size} Async] new-context, added to cache")
+            fastLegacyContexts.map { context ->
+                val job = launch(Dispatchers.Default) {
+                    processAnswer(context, messages, newContexts)
+                }
+                jobs.add(job)
+            }
+            jobs.joinAll()
+
+            Bot.LOGGER.info("${fastLegacyContexts.size} answer need add, posting request...")
+            if (messageList.isNotEmpty()) {
+                messageService.addMany(messageList, false, 10000)
+            }
+            answerService.addMany(answerList, false, 10000)
+            exitProcess(0)
+        }
+    }
+
+    private fun processAnswer(context: FastLegacyContext, allMessage: List<FastMessageExposed>, allNewContext: List<FastContextEntry>){
+        Bot.LOGGER.info("Processing context(${context.id})...")
+        context.answers.forEach { answer ->
+            val groupID = groupCache[answer.groupID]
+            if (Objects.equals(groupID, null)) {
+                return@forEach
+            }
+            answer.messages.forEach { message ->
+                val message1 = allMessage.lastOrNull { Objects.equals(it.groupID, groupID) && Objects.equals(it.rawMessage, message) }
+                val allNewContext1 = allNewContext.singleOrNull { Objects.equals(it.legacyID.toString(), context.id.toString()) } ?: throw NullPointerException("Cannot find context: ${context.id}")
+                var nowID: String? = null
+
+                if (Objects.equals(message1, null)) {
+                    nowID = UUID.randomUUID().toString()
+                    messageList.add(
+                        MessageExposed(
+                            nowID,
+                            groupID!!,
+                            null,
+                            message,
+                            context.keywords,
+                            message,
+                            "${answer.time}000".toLong(),
+                            "0041cafe-210b-4d38-ba48-19674dbb74aa"
+
+                    ))
+                    Bot.LOGGER.info("Cannot find message: $message($groupID)[${answer.time}], ready add $nowID")
+                }
+
+                answerList.add(AnswerEntry(
+                    null,
+                    groupCache[answer.groupID]!!,
+                    answer.count,
+                    allNewContext1.id!!,
+                    message1?.id ?: nowID!!,
+                    "${answer.time}000".toLong()
+                ))
+            }
+
         }
 
     }

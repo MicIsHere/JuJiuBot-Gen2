@@ -32,7 +32,7 @@
 
 [OneBot-11](https://github.com/botuniverse/onebot-11): OneBot 11 标准
 
-[Ktor](https://github.com/ktorio/ktor): 面向创建微服务、Web 应用程序等的高性能异步框架。
+[OkHttp](https://github.com/ktorio/ktor): 适用于 JVM、Android 和 GradleVM 的高效 HTTP 客户端
 
 [Kotlin](https://github.com/JetBrains/kotlin): 简洁、安全的现代编程语言。
 

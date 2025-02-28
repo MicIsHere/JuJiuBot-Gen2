@@ -1,6 +1,7 @@
 package cn.cutemic.bot.database
 
 import cn.cutemic.bot.Bot
+import cn.cutemic.bot.model.fast.FastMessageExposed
 import cn.cutemic.bot.model.MessageExposed
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
@@ -36,7 +37,7 @@ class MessageService(database: Database) {
 
     suspend fun add(message: MessageExposed) = dbQuery {
         Message.insert {
-            it[id] = UUID.randomUUID().toString()
+            it[id] = message.id ?: UUID.randomUUID().toString()
             it[bot] = message.botID
             it[group] = message.groupID
             it[user] = message.userID
@@ -54,8 +55,8 @@ class MessageService(database: Database) {
         for (i in message.indices step batchSize) {
             val batch = message.subList(i, minOf(i + batchSize, message.size))
             runCatching {
-                Message.batchInsert(batch, ignoreError) { data ->
-                    this@batchInsert[Message.id] = UUID.randomUUID().toString()
+                Message.batchInsert(batch, ignoreError, shouldReturnGeneratedValues = true) { data ->
+                    this@batchInsert[Message.id] = data.id ?: UUID.randomUUID().toString()
                     this@batchInsert[Message.bot] = cleanNullBytes(data.botID)!!
                     this@batchInsert[Message.group] = cleanNullBytes(data.groupID)!!
                     this@batchInsert[Message.user] = data.userID
@@ -63,8 +64,8 @@ class MessageService(database: Database) {
                     this@batchInsert[Message.plainText] = cleanNullBytes(data.plainText)
                     this@batchInsert[Message.rawMessage] = cleanNullBytes(data.rawMessage) ?: ""
                     this@batchInsert[Message.time] = data.time
-                }.let {
-                    Bot.LOGGER.info("Success ${it.size}/$batchSize")
+                }.let { message ->
+                    Bot.LOGGER.info("Success ${message.size}/$batchSize")
                 }
             }.onFailure {
                 Bot.LOGGER.error("On batch $i failed.")
@@ -135,6 +136,42 @@ class MessageService(database: Database) {
 
     private fun cleanNullBytes(input: String?): String? {
         return input?.replace("\u0000", "") // 去掉所有的空字节字符
+    }
+
+    suspend fun readAll(): List<MessageExposed>{
+        return dbQuery {
+            Message.selectAll()
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
+        }
+    }
+
+    suspend fun fastReadAll(): List<FastMessageExposed>{
+        return dbQuery {
+            Message.selectAll()
+                .map {
+                    FastMessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
+        }
     }
 
     @Deprecated("该函数仅可用于迁移旧版数据库")

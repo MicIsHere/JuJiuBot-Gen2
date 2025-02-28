@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
+
 plugins {
     kotlin("jvm") version "2.0.21"
 }
@@ -26,6 +28,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.59.0")
     implementation("org.jetbrains.exposed:exposed-java-time:0.59.0")
     implementation("com.impossibl.pgjdbc-ng:pgjdbc-ng:0.8.9")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     runtimeOnly("io.ktor:ktor-client-java:2.3.13")
@@ -38,6 +42,10 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
 kotlin {
     jvmToolchain(19)
+//    compilerOptions {
+//        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-receiver-assertions", "-Xno-call-assertions")
+//    }
 }

@@ -18,11 +18,17 @@ class KoinBootstrap {
         return module{
             single{
                 Bot.LOGGER.info("Connect database...")
+//                Database.connect(
+//                    "jdbc:pgsql://192.168.100.220:5432/jujiubot",
+//                    driver = "com.impossibl.postgres.jdbc.PGDriver",
+//                    user = "user_tPMaQ5",
+//                    password = "password_j5RBbH"
+//                )
                 Database.connect(
-                    "jdbc:pgsql://192.168.100.220:54321/jujiubot",
+                    "jdbc:pgsql://localhost:5432/jujiubot",
                     driver = "com.impossibl.postgres.jdbc.PGDriver",
-                    user = "user_tPMaQ5",
-                    password = "password_j5RBbH"
+                    user = "postgres",
+                    password = "mic2333"
                 )
             }
 

@@ -13,6 +13,8 @@ import cn.cutemic.bot.util.runSynchronized
 import com.hankcs.hanlp.restful.HanLPClient
 import com.huaban.analysis.jieba.WordDictionary
 import com.huaban.analysis.jieba.viterbi.FinalSeg
+import com.mongodb.ConnectionString
+import com.mongodb.MongoClientSettings
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer
 import io.ktor.http.*
@@ -32,6 +34,8 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.core.config.Configurator
+import org.bson.codecs.configuration.CodecRegistries
+import org.bson.codecs.pojo.PojoCodecProvider
 import org.koin.java.KoinJavaComponent.inject
 
 class Bot {
@@ -41,6 +45,16 @@ class Bot {
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
     private val groupCache = mutableListOf<Long>()
+
+    private val codecRegistry = CodecRegistries.fromRegistries( // FastLegacyAnswers 兼容
+        MongoClientSettings.getDefaultCodecRegistry(),
+        CodecRegistries.fromProviders(
+            PojoCodecProvider.builder()
+                .register("cn.cutemic.bot.model")
+                .automatic(true)
+                .build()
+        )
+    )
 
     init {
         LOGGER.info("System init...")
@@ -90,7 +104,12 @@ class Bot {
             LOGGER.info("Insect data...")
 
             if (USE_LEGACY_DATABASE) {
-                MongoClient.create("mongodb://localhost").getDatabase("JuJiuBot").let {
+                val settings = MongoClientSettings.builder()
+                    .applyConnectionString(ConnectionString("mongodb://localhost"))
+                    .codecRegistry(codecRegistry)
+                    .build()
+
+                MongoClient.create(settings).getDatabase("JuJiuBot").let {
                     LOGGER.info("Connect MongoDB success.")
                     LegacyDatabaseMove.transform(it)
                 }
@@ -147,7 +166,7 @@ class Bot {
             return@let it
         }
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "NzYyMUBiYnMuaGFubHAuY29tOndINHlMaVNxTnZ2elhmM0E")
         lateinit var ONEBOT: OneBotBot
     }
 }
