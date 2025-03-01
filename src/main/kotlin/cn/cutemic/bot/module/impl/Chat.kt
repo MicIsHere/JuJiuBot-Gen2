@@ -2,11 +2,11 @@ package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.*
-import cn.cutemic.bot.util.IgnoreCommand
 import cn.cutemic.bot.model.MessageExposed
 import cn.cutemic.bot.model.context.AnswerEntry
 import cn.cutemic.bot.model.context.ContextEntry
 import cn.cutemic.bot.module.BotModule
+import cn.cutemic.bot.util.IgnoreCommand
 import cn.cutemic.bot.util.Task
 import kotlinx.coroutines.runBlocking
 import love.forte.simbot.common.id.toLong
@@ -107,7 +107,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             return
         }
 
-        val lastMessageID = messageID.lastOrNull() { it.second == data.groupID }!!.first
+        val lastMessageID = messageID.lastOrNull { it.second == data.groupID }!!.first
         val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
 
         // 添加这次发言的信息数据
@@ -125,10 +125,12 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     .asReversed()
                     .take(3)
                     .firstOrNull { msg ->
-                        requireNotNull(msg.userID) { "Invalid user ID in message" }
-                        msg.userID == lastMessage.userID && msg.plainText != lastMessage.plainText // 复读检查
+                        // 由于兼容旧版数据库的原因，msg.userID 可能为空。
+                        //                        requireNotNull(msg.userID) { "Invalid user ID in message" }
+                        msg.plainText != lastMessage.plainText // 复读检查
                     }?.let { foundMsg ->
-                        val foundMessageKeyword = analyzeText(foundMsg.plainText!!)
+                        val message = foundMsg.plainText ?: foundMsg.rawMessage
+                        val foundMessageKeyword = analyzeText(message)
                         val contextID = insectContext(foundMessageKeyword.first, foundMessageKeyword.second)
                         answerService.getAnswerByContextId(contextID).singleOrNull { it.message == lastMessage.id }?.let {
                             answerService.updateCount(it.id!!, it.count++)
