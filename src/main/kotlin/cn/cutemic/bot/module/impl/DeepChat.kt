@@ -16,6 +16,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.koin.java.KoinJavaComponent.inject
 import java.time.Duration
+import java.util.concurrent.ThreadLocalRandom
 
 object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的聊天功能。") {
 
@@ -58,6 +59,7 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
 “多谢关心，我会注意的……唔”
 #举起酒杯一饮而尽，又伸手抹了把汗。似乎是有些热了，于是解开了大衣的扣子，露出衬衫。
 “这点而已，还没到限制量吧……博士，不一起吗？”"""
+    private val random = ThreadLocalRandom.current() // 脱离线程随机
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(Duration.ofSeconds(5))
@@ -128,6 +130,16 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                 gson.fromJson(responseBody, Response::class.java).choices.forEach { choice ->
                     if (choice.message.content.contains("DeepSeek") && choice.message.content.contains("深度求索")) {
                         throw IllegalStateException("该会话已进入不可控状态")
+                    }
+
+                    if (choice.message.content.contains("[JuJiuBot:End]")){
+                        val group = groupService.read(groupId.toLong())!!
+                        val sleepDuration = (minOf(group.drunk, 3.5) + random.nextDouble()) * 80
+                        groupService.updateSoberUpTime(group.id!!, sleepDuration.toLong())
+                        messages.remove(groupId.toString())
+                        reply(choice.message.content)
+                        reply("Zzz...")
+                        return@on EventResult.empty()
                     }
                     reply(choice.message.content)
                 }
