@@ -42,7 +42,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(19)
+    jvmToolchain(21)
 //    compilerOptions {
 //        freeCompilerArgs = listOf("-Xno-param-assertions", "-Xno-receiver-assertions", "-Xno-call-assertions")
 //    }
