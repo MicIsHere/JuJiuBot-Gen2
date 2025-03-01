@@ -10,7 +10,7 @@ import kotlin.reflect.jvm.isAccessible
 object TaskManager {
     private val jobs = mutableListOf<Job>()
 
-    fun loadTask(){
+    fun loadTask() {
         Bot.LOGGER.info("Loading task...")
         ClassManager.taskField.forEach {
             tryRegister(it)

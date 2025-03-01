@@ -9,8 +9,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class GroupService(database: Database) {
-    object Group: Table("group"){
-        val id = varchar("id",36)
+    object Group : Table("group") {
+        val id = varchar("id", 36)
         val group = long("group")
         val activity = double("activity").default(0.0)
         val drunk = double("drunk").default(0.0)
@@ -39,28 +39,55 @@ class GroupService(database: Database) {
         }[Group.id]
     }
 
-    suspend fun read(id: Long): GroupExposed?{
+    suspend fun read(id: Long): GroupExposed? {
         return dbQuery {
             Group.selectAll()
                 .where(Group.group eq id)
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
+                .map {
+                    GroupExposed(
+                        it[Group.id],
+                        it[Group.group],
+                        it[Group.activity],
+                        it[Group.drunk],
+                        it[Group.soberUpTime],
+                        it[Group.blocked]
+                    )
+                }
                 .singleOrNull()
         }
     }
 
-    suspend fun read(id: String): GroupExposed?{
+    suspend fun read(id: String): GroupExposed? {
         return dbQuery {
             Group.selectAll()
                 .where(Group.id eq id)
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
+                .map {
+                    GroupExposed(
+                        it[Group.id],
+                        it[Group.group],
+                        it[Group.activity],
+                        it[Group.drunk],
+                        it[Group.soberUpTime],
+                        it[Group.blocked]
+                    )
+                }
                 .singleOrNull()
         }
     }
 
-    suspend fun readAll(): List<GroupExposed>{
+    suspend fun readAll(): List<GroupExposed> {
         return dbQuery {
             Group.selectAll()
-                .map { GroupExposed(it[Group.id], it[Group.group], it[Group.activity], it[Group.drunk], it[Group.soberUpTime], it[Group.blocked]) }
+                .map {
+                    GroupExposed(
+                        it[Group.id],
+                        it[Group.group],
+                        it[Group.activity],
+                        it[Group.drunk],
+                        it[Group.soberUpTime],
+                        it[Group.blocked]
+                    )
+                }
         }
     }
 

@@ -1,8 +1,8 @@
 package cn.cutemic.bot.database
 
 import cn.cutemic.bot.Bot
-import cn.cutemic.bot.model.fast.FastMessageExposed
 import cn.cutemic.bot.model.MessageExposed
+import cn.cutemic.bot.model.fast.FastMessageExposed
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -11,10 +11,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class MessageService(database: Database) {
-    object Message: Table("message"){
-        val id = varchar("id",36)
-        val bot = varchar("bot",36)
-        val group = varchar("group",36)
+    object Message : Table("message") {
+        val id = varchar("id", 36)
+        val bot = varchar("bot", 36)
+        val group = varchar("group", 36)
         val user = long("user_id").nullable() // 兼容旧版数据库
         val keywords = text("keywords")
         val plainText = text("plain_text").nullable()
@@ -76,25 +76,27 @@ class MessageService(database: Database) {
     }
 
 
-    suspend fun read(id: String): MessageExposed?{
+    suspend fun read(id: String): MessageExposed? {
         return dbQuery {
             Message.selectAll()
                 .where(Message.id eq id)
-                .map { MessageExposed(
-                    it[Message.id],
-                    it[Message.group],
-                    it[Message.user],
-                    it[Message.rawMessage],
-                    it[Message.keywords],
-                    it[Message.plainText],
-                    it[Message.time],
-                    it[Message.bot]
-                ) }
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
                 .singleOrNull()
         }
     }
 
-    suspend fun readLastMessages(id: String, messageCount: Int): List<MessageExposed>{
+    suspend fun readLastMessages(id: String, messageCount: Int): List<MessageExposed> {
         return dbQuery {
             Message.selectAll()
                 .where(Message.group eq id)
@@ -115,7 +117,7 @@ class MessageService(database: Database) {
         }
     }
 
-    suspend fun readListByGroupID(group: String): List<MessageExposed>{
+    suspend fun readListByGroupID(group: String): List<MessageExposed> {
         return dbQuery {
             Message.selectAll()
                 .where(Message.group eq group)
@@ -138,7 +140,7 @@ class MessageService(database: Database) {
         return input?.replace("\u0000", "") // 去掉所有的空字节字符
     }
 
-    suspend fun readAll(): List<MessageExposed>{
+    suspend fun readAll(): List<MessageExposed> {
         return dbQuery {
             Message.selectAll()
                 .map {
@@ -156,7 +158,7 @@ class MessageService(database: Database) {
         }
     }
 
-    suspend fun fastReadAll(): List<FastMessageExposed>{
+    suspend fun fastReadAll(): List<FastMessageExposed> {
         return dbQuery {
             Message.selectAll()
                 .map {
@@ -175,20 +177,22 @@ class MessageService(database: Database) {
     }
 
     @Deprecated("该函数仅可用于迁移旧版数据库")
-    suspend fun searchMessageOnLegacyDatabaseTransform(groupID: String, message: String, time: Long): MessageExposed?{
+    suspend fun searchMessageOnLegacyDatabaseTransform(groupID: String, message: String, time: Long): MessageExposed? {
         return dbQuery {
             Message.selectAll()
                 .where((Message.group eq groupID) and (Message.rawMessage eq message) and (Message.time eq time))
-                .map { MessageExposed(
-                    it[Message.id],
-                    it[Message.group],
-                    it[Message.user],
-                    it[Message.rawMessage],
-                    it[Message.keywords],
-                    it[Message.plainText],
-                    it[Message.time],
-                    it[Message.bot]
-                ) }
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
                 .singleOrNull()
         }
     }

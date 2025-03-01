@@ -1,6 +1,5 @@
 package cn.cutemic.bot.model.fast
 
-import cn.cutemic.bot.model.MessageExposed
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable
 

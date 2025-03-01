@@ -3,7 +3,6 @@ package cn.cutemic.bot.database
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.ContextService.Context
 import cn.cutemic.bot.model.context.AnswerEntry
-import cn.cutemic.bot.model.context.ContextEntry
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -13,9 +12,9 @@ import java.util.*
 
 // 链接回答和上下文
 class AnswerService(database: Database) {
-    object Answer: Table("answer"){
-        val id = varchar("id",36)
-        val group = varchar("group",36).nullable()
+    object Answer : Table("answer") {
+        val id = varchar("id", 36)
+        val group = varchar("group", 36).nullable()
         val count = integer("count")
         val lastUsed = long("last_used")
         val context = reference("context", Context.id)
@@ -36,19 +35,37 @@ class AnswerService(database: Database) {
         newSuspendedTransaction(Dispatchers.IO) { block() }
 
     // 使用上下文ID获取所有回答
-    suspend fun getAnswerByContextId(id: String): List<AnswerEntry>{
+    suspend fun getAnswerByContextId(id: String): List<AnswerEntry> {
         return dbQuery {
             Answer.selectAll()
                 .where(Answer.context eq id)
-                .map { AnswerEntry(it[Answer.id], it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
+                .map {
+                    AnswerEntry(
+                        it[Answer.id],
+                        it[Answer.group],
+                        it[Answer.count],
+                        it[Answer.context],
+                        it[Answer.message],
+                        it[Answer.lastUsed]
+                    )
+                }
         }
     }
 
-    suspend fun get(id: String): AnswerEntry?{
+    suspend fun get(id: String): AnswerEntry? {
         return dbQuery {
             Answer.selectAll()
                 .where(Answer.id eq id)
-                .map { AnswerEntry(it[Answer.id], it[Answer.group], it[Answer.count], it[Answer.context], it[Answer.message], it[Answer.lastUsed]) }
+                .map {
+                    AnswerEntry(
+                        it[Answer.id],
+                        it[Answer.group],
+                        it[Answer.count],
+                        it[Answer.context],
+                        it[Answer.message],
+                        it[Answer.lastUsed]
+                    )
+                }
                 .singleOrNull()
         }
     }

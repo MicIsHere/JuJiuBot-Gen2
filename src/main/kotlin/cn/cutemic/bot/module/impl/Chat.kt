@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.*
 
 @OptIn(InternalOneBotAPI::class)
-object Chat: BotModule("聊天","与牛牛聊天") {
+object Chat : BotModule("聊天", "与牛牛聊天") {
 
     /* 运行时变量 */
     private val random = ThreadLocalRandom.current() // 脱离线程随机
@@ -44,8 +44,10 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         event {
             on<OneBotNormalGroupMessageEvent> {
                 val message = messageContent.plainText ?: ""
-                val bot = botService.read(bot.userId.toLong()) ?: throw NullPointerException("Cannot get bot-id in database.")
-                val groupExposed = groupService.read(groupId.toLong()) ?: throw NullPointerException("Cannot get group-id in database.")
+                val bot =
+                    botService.read(bot.userId.toLong()) ?: throw NullPointerException("Cannot get bot-id in database.")
+                val groupExposed = groupService.read(groupId.toLong())
+                    ?: throw NullPointerException("Cannot get group-id in database.")
 
                 if (rawMessage.startsWith("[CQ:")) {
                     return@on EventResult.invalid()
@@ -70,7 +72,10 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     learn(chatData)
                 }
 
-                if (random.nextDouble() >= calculateReplyProbability(groupService.read(groupExposed.id)?.activity ?: 0.0)) { // 查找回复概率
+                if (random.nextDouble() >= calculateReplyProbability(
+                        groupService.read(groupExposed.id)?.activity ?: 0.0
+                    )
+                ) { // 查找回复概率
                     return@on EventResult.empty()
                 }
 
@@ -98,28 +103,29 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         }
     }
 
-    private suspend fun learn(data: MessageExposed){
-            if (messageID.none { it.second == data.groupID }) {
-                messageService.add(data).let {
-                    messageID.add(Pair(it, data.groupID))
-                }
-            }
-
-            val lastMessageID = messageID
-                .lastOrNull { it.second == data.groupID }
-                ?.first
-                ?: throw NullPointerException("Cannot get last message in database.")
-
-            val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
-            // 添加这次发言的信息数据
+    private suspend fun learn(data: MessageExposed) {
+        if (messageID.none { it.second == data.groupID }) {
             messageService.add(data).let {
                 messageID.add(Pair(it, data.groupID))
             }
-            // 复读检查
-            if (lastMessage.plainText == data.plainText) {
-                return
-            }
-            // 上一条发言用户不是这次数据的用户 将尝试获取前三条数据
+        }
+
+        val lastMessageID = messageID
+            .lastOrNull { it.second == data.groupID }
+            ?.first
+            ?: throw NullPointerException("Cannot get last message in database.")
+
+        val lastMessage =
+            messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
+        // 添加这次发言的信息数据
+        messageService.add(data).let {
+            messageID.add(Pair(it, data.groupID))
+        }
+        // 复读检查
+        if (lastMessage.plainText == data.plainText) {
+            return
+        }
+        // 上一条发言用户不是这次数据的用户 将尝试获取前三条数据
         if (lastMessage.userID != data.userID) {
             messageService.readListByGroupID(data.groupID)
                 .asReversed()
@@ -142,25 +148,29 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                         .filter { it.message == lastMessage.id }
                     if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
                         allAnswer.forEach { answerService.delete(it.id!!) }
-                        answerService.add(AnswerEntry(
+                        answerService.add(
+                            AnswerEntry(
+                                null,
+                                null,
+                                1,
+                                contextID,
+                                lastMessage.id!!,
+                                System.currentTimeMillis()
+                            )
+                        )
+                        return
+                    }
+
+                    answerService.add(
+                        AnswerEntry(
                             null,
-                            null,
+                            data.groupID,
                             1,
                             contextID,
                             lastMessage.id!!,
                             System.currentTimeMillis()
-                        ))
-                        return
-                    }
-
-                    answerService.add(AnswerEntry(
-                        null,
-                        data.groupID,
-                        1,
-                        contextID,
-                        lastMessage.id!!,
-                        System.currentTimeMillis()
-                    ))
+                        )
+                    )
                 }
 
             val message1 = lastMessage.plainText ?: lastMessage.rawMessage
@@ -176,25 +186,29 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     .filter { it.message == lastMessage.id }
                 if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
                     allAnswer.forEach { answerService.delete(it.id!!) }
-                    answerService.add(AnswerEntry(
+                    answerService.add(
+                        AnswerEntry(
+                            null,
+                            null,
+                            1,
+                            context,
+                            lastMessage.id!!,
+                            System.currentTimeMillis()
+                        )
+                    )
+                    return
+                }
+
+                answerService.add(
+                    AnswerEntry(
                         null,
-                        null,
+                        data.groupID,
                         1,
                         context,
                         lastMessage.id!!,
                         System.currentTimeMillis()
-                    ))
-                    return
-                }
-
-                answerService.add(AnswerEntry(
-                    null,
-                    data.groupID,
-                    1,
-                    context,
-                    lastMessage.id!!,
-                    System.currentTimeMillis()
-                ))
+                    )
+                )
             }
         }
     }
@@ -206,7 +220,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
      *
      * First为关键字，Second为权重。
      */
-    private fun analyzeText(text: String): Pair<String, String>{
+    private fun analyzeText(text: String): Pair<String, String> {
         val keywordList = Bot.TFIDF.analyze(text, KEYWORD_SIZE)
         val result = StringBuilder()
         val weightResult = StringBuilder()
@@ -299,23 +313,23 @@ object Chat: BotModule("聊天","与牛牛聊天") {
         val weights = answerList
             .filter { it.group == null || it.group == data.groupID }
             .map { candidate ->
-            val timeDecay = exp(-(System.currentTimeMillis() - candidate.lastUsed) / 1_000_000.0)
-            val keywordList = contextService.get(candidate.context)!!.keywords.split("|")
-            val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split("|")
+                val timeDecay = exp(-(System.currentTimeMillis() - candidate.lastUsed) / 1_000_000.0)
+                val keywordList = contextService.get(candidate.context)!!.keywords.split("|")
+                val keywordWeightList = contextService.get(candidate.context)!!.keywordsWeight.split("|")
 
-            var weightCount = 0
-            val topical = keywordList.sumOf {
-                keywordWeightList[weightCount]
-                weightCount++
-            }.let {
-                weightCount = 0
-                it
+                var weightCount = 0
+                val topical = keywordList.sumOf {
+                    keywordWeightList[weightCount]
+                    weightCount++
+                }.let {
+                    weightCount = 0
+                    it
+                }
+
+                min(candidate.count.toDouble(), 10.0) +
+                        topical * TOPICS_IMPORTANCE +
+                        timeDecay
             }
-
-            min(candidate.count.toDouble(), 10.0) +
-                    topical * TOPICS_IMPORTANCE +
-                    timeDecay
-        }
 
         val totalWeight = weights.sum()
         if (totalWeight <= 0) return null
@@ -335,7 +349,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
      *
      * 成功获取到回答后将返回String
      */
-    private suspend fun reply(data: MessageExposed): String?{
+    private suspend fun reply(data: MessageExposed): String? {
         Bot.LOGGER.info("Trying reply...")
         val answer = selectWeightedAnswer(data) ?: return null
         return messageService.read(answer.message)?.rawMessage
@@ -344,30 +358,34 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     /**
      * 向数据库置入上下文
      */
-    private suspend fun insectContext(keyword: String, weight: String): String{
+    private suspend fun insectContext(keyword: String, weight: String): String {
         var contextID = contextService.getId(keyword)
         if (contextID == null) {
-            contextID = contextService.add(ContextEntry(
-                null,
-                keywords = keyword,
-                keywordsWeight = weight,
-                count = 1,
-                lastUpdated = System.currentTimeMillis(),
-                null
-            ))
+            contextID = contextService.add(
+                ContextEntry(
+                    null,
+                    keywords = keyword,
+                    keywordsWeight = weight,
+                    count = 1,
+                    lastUpdated = System.currentTimeMillis(),
+                    null
+                )
+            )
             return contextID
         }
 
         Bot.LOGGER.info("Update context count.")
         val count = contextService.get(contextID)!!.count++
-        contextService.update(ContextEntry(
-            contextID,
-            keywords = keyword,
-            keywordsWeight = weight,
-            count = count,
-            lastUpdated = System.currentTimeMillis(),
-            null
-        ))
+        contextService.update(
+            ContextEntry(
+                contextID,
+                keywords = keyword,
+                keywordsWeight = weight,
+                count = count,
+                lastUpdated = System.currentTimeMillis(),
+                null
+            )
+        )
         return contextID
     }
 
@@ -375,7 +393,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
      * 每半小时计算一次群聊活跃度
      */
     @Task(60 * 30)
-    private fun calcGroupActivity(){
+    private fun calcGroupActivity() {
         runBlocking {
             Bot.LOGGER.info("Start calc group activity...")
             groupService.readAll().forEach { it ->

@@ -7,7 +7,7 @@ import love.forte.simbot.event.EventResult
 import love.forte.simbot.message.safePlainText
 import org.koin.java.KoinJavaComponent.inject
 
-object Admin: BotModule("管理","用于管理牛牛") {
+object Admin : BotModule("管理", "用于管理牛牛") {
 
     private val result = StringBuilder()
 

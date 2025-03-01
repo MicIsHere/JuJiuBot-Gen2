@@ -10,7 +10,7 @@ import love.forte.simbot.event.EventResult
 import org.koin.java.KoinJavaComponent.inject
 import java.util.concurrent.ThreadLocalRandom
 
-object Drunk: BotModule("喝酒","灌醉牛牛") {
+object Drunk : BotModule("喝酒", "灌醉牛牛") {
 
     /* 运行时变量 */
     private val random = ThreadLocalRandom.current() // 脱离线程随机
@@ -24,7 +24,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
                 }
 
                 val group = service.read(groupId.toLong())!!
-                val drunk = group.drunk + random.nextDouble(0.0,0.3)
+                val drunk = group.drunk + random.nextDouble(0.0, 0.3)
 
                 val goToSleep = random.nextDouble() < if (group.drunk <= 5.0) {
                     0.02
@@ -54,7 +54,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
      * 每分钟执行一次，对醉酒系数减少0.1至0.3
      */
     @Task(60)
-    fun trySoberUp(){
+    fun trySoberUp() {
         runBlocking {
             service.readAll()
                 .forEach {
@@ -62,7 +62,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
                         return@runBlocking
                     }
 
-                    val number = random.nextDouble(0.1,0.3)
+                    val number = random.nextDouble(0.1, 0.3)
                     val result = if (((it.drunk - number) < 0)) 0.0 else it.drunk - number
                     service.updateDrunk(it.id!!, result)
                     val time = it.soberUpTime ?: return@runBlocking

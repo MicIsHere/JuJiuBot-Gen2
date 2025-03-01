@@ -42,7 +42,7 @@ class EventDSL {
         listeners.forEach { it() }
     }
 
-    fun processError(event: Event, throwable: Throwable): EventResult{
+    fun processError(event: Event, throwable: Throwable): EventResult {
         val stackTrace = StringBuilder()
         val uuid = UUID.randomUUID()
 
@@ -72,7 +72,7 @@ class EventDSL {
         return EventResult.invalid()
     }
 
-    fun processEvent(event: Event): EventResult{
+    fun processEvent(event: Event): EventResult {
         var result = EventResult.empty()
         when (event) {
             is OneBotNormalGroupMessageEvent -> {

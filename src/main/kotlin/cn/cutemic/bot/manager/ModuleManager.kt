@@ -9,7 +9,7 @@ import kotlin.system.measureTimeMillis
 object ModuleManager {
     private val botModuleInstance = CopyOnWriteArrayList<BotModule>()
 
-    fun perloadModule(){
+    fun perloadModule() {
         Bot.LOGGER.info("Preload module")
         val time = measureTimeMillis {
             ClassManager.botModuleClasses

@@ -8,16 +8,16 @@ import org.koin.dsl.module
 
 class KoinBootstrap {
 
-    fun start(){
+    fun start() {
         startKoin {
             modules(database())
         }
         Bot.LOGGER.info("Koin started!")
     }
 
-    private fun database(): Module{
-        return module{
-            single{
+    private fun database(): Module {
+        return module {
+            single {
                 Bot.LOGGER.info("Connect database...")
 //                Database.connect(
 //                    "jdbc:pgsql://192.168.100.220:5432/jujiubot",

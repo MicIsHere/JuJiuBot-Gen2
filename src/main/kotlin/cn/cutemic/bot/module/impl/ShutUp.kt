@@ -9,14 +9,14 @@ import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGro
 import love.forte.simbot.event.EventResult
 import org.koin.java.KoinJavaComponent.inject
 
-object ShutUp: BotModule("闭嘴", "使牛牛临时安静五分钟") {
+object ShutUp : BotModule("闭嘴", "使牛牛临时安静五分钟") {
 
     private val groupService by inject<GroupService>(GroupService::class.java)
 
     init {
         event {
             on<OneBotNormalGroupMessageEvent> {
-                if (IgnoreCommand.equals(rawMessage)){
+                if (IgnoreCommand.equals(rawMessage)) {
                     return@on EventResult.empty()
                 }
                 if (messageContent.plainText != "牛牛闭嘴") {

@@ -8,7 +8,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class BotService(database: Database) {
-    object Bot: Table("bot"){
+    object Bot : Table("bot") {
         val id = varchar("id", 36)
         val bot = long("bot")
 
@@ -33,7 +33,7 @@ class BotService(database: Database) {
         }[Bot.id]
     }
 
-    suspend fun read(id: Long): String?{
+    suspend fun read(id: Long): String? {
         return dbQuery {
             Bot.selectAll()
                 .where(Bot.bot eq id)

@@ -9,10 +9,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class BlockService(database: Database) {
-    object Block: Table("message"){
-        val id = varchar("id",36)
-        val bot = varchar("bot",36)
-        val group = varchar("group",36).nullable()
+    object Block : Table("message") {
+        val id = varchar("id", 36)
+        val bot = varchar("bot", 36)
+        val group = varchar("group", 36).nullable()
         val userID = long("user_id").nullable()
         val answer = text("answer")
         val reason = text("reason")

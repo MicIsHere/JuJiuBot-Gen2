@@ -11,7 +11,7 @@ object IgnoreCommand {
         "牛牛继续喝"
     )
 
-    fun equals(message: String): Boolean{
+    fun equals(message: String): Boolean {
         val command = message.split(" ").getOrNull(0) ?: return true
         list.forEach {
             if (command == it) {
