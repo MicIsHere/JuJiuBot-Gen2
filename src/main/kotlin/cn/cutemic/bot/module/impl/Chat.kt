@@ -99,106 +99,104 @@ object Chat: BotModule("聊天","与牛牛聊天") {
     }
 
     private suspend fun learn(data: MessageExposed){
-        // 获取群里的上一条发言 当作现在处理这条消息的(问题)
-        if (messageID.isEmpty()) {
+            if (messageID.none { it.second == data.groupID }) {
+                messageService.add(data).let {
+                    messageID.add(Pair(it, data.groupID))
+                }
+            }
+
+            val lastMessageID = messageID
+                .lastOrNull { it.second == data.groupID }
+                ?.first
+                ?: throw NullPointerException("Cannot get last message in database.")
+
+            val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
+
+            // 添加这次发言的信息数据
             messageService.add(data).let {
                 messageID.add(Pair(it, data.groupID))
             }
-            return
-        }
-
-        val lastMessageID = messageID.lastOrNull { it.second == data.groupID }!!.first
-        val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
-
-        // 添加这次发言的信息数据
-        messageService.add(data).let {
-            messageID.add(Pair(it, data.groupID))
-        }
-        // 复读检查
-        if (lastMessage.plainText == data.plainText) {
-            return
-        }
-        // 上一条发言用户不是这次数据的用户 将尝试获取前三条数据
+            // 复读检查
+            if (lastMessage.plainText == data.plainText) {
+                return
+            }
+            // 上一条发言用户不是这次数据的用户 将尝试获取前三条数据
         if (lastMessage.userID != data.userID) {
-            runCatching {
-                messageService.readListByGroupID(data.groupID)
-                    .asReversed()
-                    .take(3)
-                    .firstOrNull { msg ->
-                        // 由于兼容旧版数据库的原因，msg.userID 可能为空。
-                        // requireNotNull(msg.userID) { "Invalid user ID in message" }
-                        msg.plainText != lastMessage.plainText // 复读检查
-                    }?.let { foundMsg ->
-                        val message = foundMsg.plainText ?: foundMsg.rawMessage
-                        val foundMessageKeyword = analyzeText(message)
-                        val contextID = insectContext(foundMessageKeyword.first, foundMessageKeyword.second)
-                        answerService.getAnswerByContextId(contextID).singleOrNull { it.message == lastMessage.id }?.let {
-                            answerService.updateCount(it.id!!, it.count++)
-                            return@runCatching
-                        }
+            messageService.readListByGroupID(data.groupID)
+                .asReversed()
+                .take(3)
+                .firstOrNull { msg ->
+                    // 由于兼容旧版数据库的原因，msg.userID 可能为空。
+                    // requireNotNull(msg.userID) { "Invalid user ID in message" }
+                    msg.plainText != lastMessage.plainText // 复读检查
+                }?.let { foundMsg ->
+                    val message = foundMsg.plainText ?: foundMsg.rawMessage
+                    val foundMessageKeyword = analyzeText(message)
+                    val contextID = insectContext(foundMessageKeyword.first, foundMessageKeyword.second)
+                    answerService.getAnswerByContextId(contextID).singleOrNull { it.message == lastMessage.id }?.let {
+                        answerService.updateCount(it.id!!, it.count++)
+                        return
+                    }
 
-                        val allAnswer = answerService.getAnswerByContextId(contextID)
-                            .filter { it.group != data.groupID }
-                            .filter { it.message == lastMessage.id }
-                        if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
-                            allAnswer.forEach { answerService.delete(it.id!!) }
-                            answerService.add(AnswerEntry(
-                                null,
-                                null,
-                                1,
-                                contextID,
-                                lastMessage.id!!,
-                                System.currentTimeMillis()
-                            ))
-                            return@runCatching
-                        }
-
+                    val allAnswer = answerService.getAnswerByContextId(contextID)
+                        .filter { it.group != data.groupID }
+                        .filter { it.message == lastMessage.id }
+                    if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
+                        allAnswer.forEach { answerService.delete(it.id!!) }
                         answerService.add(AnswerEntry(
                             null,
-                            data.groupID,
+                            null,
                             1,
                             contextID,
                             lastMessage.id!!,
                             System.currentTimeMillis()
                         ))
+                        return
                     }
-            }.onFailure {
-                Bot.LOGGER.error("Error processing messages: ${it.message}")
-                throw it
-            }
-        }
 
-        val analysis1 = analyzeText(lastMessage.plainText!!)
-        insectContext(analysis1.first, analysis1.second).let { context ->
-            answerService.getAnswerByContextId(context).singleOrNull { it.message == lastMessage.id }?.let {
-                answerService.updateCount(it.id!!, it.count++)
-                return
-            }
+                    answerService.add(AnswerEntry(
+                        null,
+                        data.groupID,
+                        1,
+                        contextID,
+                        lastMessage.id!!,
+                        System.currentTimeMillis()
+                    ))
+                }
 
-            val allAnswer = answerService.getAnswerByContextId(context)
-                .filter { it.group != data.groupID }
-                .filter { it.message == lastMessage.id }
-            if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
-                allAnswer.forEach { answerService.delete(it.id!!) }
+            val message1 = lastMessage.plainText ?: lastMessage.rawMessage
+            val analysis1 = analyzeText(message1)
+            insectContext(analysis1.first, analysis1.second).let { context ->
+                answerService.getAnswerByContextId(context).singleOrNull { it.message == lastMessage.id }?.let {
+                    answerService.updateCount(it.id!!, it.count++)
+                    return
+                }
+
+                val allAnswer = answerService.getAnswerByContextId(context)
+                    .filter { it.group != data.groupID }
+                    .filter { it.message == lastMessage.id }
+                if (allAnswer.size >= CROSS_GROUP_THRESHOLD) { // 添加全局 Answer
+                    allAnswer.forEach { answerService.delete(it.id!!) }
+                    answerService.add(AnswerEntry(
+                        null,
+                        null,
+                        1,
+                        context,
+                        lastMessage.id!!,
+                        System.currentTimeMillis()
+                    ))
+                    return
+                }
+
                 answerService.add(AnswerEntry(
                     null,
-                    null,
+                    data.groupID,
                     1,
                     context,
                     lastMessage.id!!,
                     System.currentTimeMillis()
                 ))
-                return
             }
-
-            answerService.add(AnswerEntry(
-                null,
-                data.groupID,
-                1,
-                context,
-                lastMessage.id!!,
-                System.currentTimeMillis()
-            ))
         }
     }
 
