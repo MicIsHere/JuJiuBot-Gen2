@@ -138,7 +138,7 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                         groupService.updateSoberUpTime(group.id!!, sleepDuration.toLong())
                         groupService.updateDrunk(group.id, 0.0)
                         messages.remove(groupId.toString())
-                        reply(choice.message.content)
+                        reply(choice.message.content.replace("[JuJiuBot:End]",""))
                         reply("Zzz...")
                         return@on EventResult.empty()
                     }
