@@ -72,9 +72,10 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                     return@on EventResult.empty()
                 }
 
-                if (!rawMessage.startsWith("[CQ:at,qq=${Bot.ONEBOT.userId}]") && !messageContent.safePlainText.startsWith("牛牛")){
+                if (!rawMessage.startsWith("[CQ:at,qq=${Bot.ONEBOT.userId}") && !messageContent.safePlainText.startsWith("牛牛")){
                     return@on EventResult.empty()
                 }
+
                 val drunk = groupService.read(groupId.toLong())?.drunk ?: 0.0
                 if (drunk <= 0.0){
                     return@on EventResult.empty()
@@ -123,6 +124,9 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                 val responseBody = response.body?.string().toString()
                 val gson = Gson()
                 gson.fromJson(responseBody, Response::class.java).choices.forEach { choice ->
+                    if (choice.message.content.contains("DeepSeek") && choice.message.content.contains("深度求索")) {
+                        throw IllegalStateException("该会话已进入不可控状态。")
+                    }
                     reply(choice.message.content)
                 }
                 return@on EventResult.empty()
