@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
-
 plugins {
     kotlin("jvm") version "2.0.21"
 }
@@ -29,7 +27,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:0.59.0")
     implementation("com.impossibl.pgjdbc-ng:pgjdbc-ng:0.8.9")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
+    implementation("com.google.code.gson:gson:2.12.1")
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     runtimeOnly("io.ktor:ktor-client-java:2.3.13")

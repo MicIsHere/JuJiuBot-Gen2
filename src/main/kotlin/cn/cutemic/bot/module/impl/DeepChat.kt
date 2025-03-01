@@ -2,8 +2,10 @@ package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.GroupService
+import cn.cutemic.bot.model.Response
 import cn.cutemic.bot.module.BotModule
 import cn.cutemic.bot.util.IgnoreCommand
+import com.google.gson.Gson
 import kotlinx.serialization.json.*
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.event.EventResult
@@ -15,7 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.koin.java.KoinJavaComponent.inject
 import java.time.Duration
 
-object DeepSeekChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的聊天功能。") {
+object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的聊天功能。") {
 
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val messages = mutableListOf<String>()
@@ -74,7 +76,7 @@ object DeepSeekChat: BotModule("深度聊天","在醉酒状态下接入Deepseek�
                     return@on EventResult.empty()
                 }
                 val drunk = groupService.read(groupId.toLong())?.drunk ?: 0.0
-                if (drunk == 0.0){
+                if (drunk <= 0.0){
                     return@on EventResult.empty()
                 }
                 messages.add("${messageContent.safePlainText} !DRUNK=$drunk")
@@ -117,10 +119,12 @@ object DeepSeekChat: BotModule("深度聊天","在醉酒状态下接入Deepseek�
                     .addHeader("Accept", "application/json")
                     .addHeader("Authorization", "Bearer sk-69a5cfb33ba34d3c9660dceae5f3e3b1")
                     .build()
-
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string().toString()
-                reply(responseBody)
+                val gson = Gson()
+                gson.fromJson(responseBody, Response::class.java).choices.forEach { choice ->
+                    reply(choice.message.content)
+                }
                 return@on EventResult.empty()
             }
         }
