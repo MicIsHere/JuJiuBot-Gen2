@@ -126,7 +126,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                     .take(3)
                     .firstOrNull { msg ->
                         // 由于兼容旧版数据库的原因，msg.userID 可能为空。
-                        //                        requireNotNull(msg.userID) { "Invalid user ID in message" }
+                        // requireNotNull(msg.userID) { "Invalid user ID in message" }
                         msg.plainText != lastMessage.plainText // 复读检查
                     }?.let { foundMsg ->
                         val message = foundMsg.plainText ?: foundMsg.rawMessage
