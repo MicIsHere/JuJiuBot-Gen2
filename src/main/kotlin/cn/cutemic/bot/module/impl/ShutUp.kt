@@ -2,6 +2,7 @@ package cn.cutemic.bot.module.impl
 
 import cn.cutemic.bot.database.GroupService
 import cn.cutemic.bot.module.BotModule
+import cn.cutemic.bot.util.IgnoreCommand
 import cn.cutemic.bot.util.Task
 import kotlinx.coroutines.runBlocking
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
@@ -15,6 +16,9 @@ object ShutUp: BotModule("闭嘴", "使牛牛临时安静五分钟") {
     init {
         event {
             on<OneBotNormalGroupMessageEvent> {
+                if (IgnoreCommand.equals(rawMessage)){
+                    return@on EventResult.empty()
+                }
                 if (messageContent.plainText != "牛牛闭嘴") {
                     return@on EventResult.empty()
                 }
