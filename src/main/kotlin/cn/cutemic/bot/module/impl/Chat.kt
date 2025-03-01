@@ -111,7 +111,6 @@ object Chat: BotModule("聊天","与牛牛聊天") {
                 ?: throw NullPointerException("Cannot get last message in database.")
 
             val lastMessage = messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
-
             // 添加这次发言的信息数据
             messageService.add(data).let {
                 messageID.add(Pair(it, data.groupID))
@@ -358,6 +357,7 @@ object Chat: BotModule("聊天","与牛牛聊天") {
             ))
             return contextID
         }
+
         Bot.LOGGER.info("Update context count.")
         val count = contextService.get(contextID)!!.count++
         contextService.update(ContextEntry(
