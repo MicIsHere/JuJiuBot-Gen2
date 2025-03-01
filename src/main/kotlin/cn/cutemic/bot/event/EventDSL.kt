@@ -88,7 +88,6 @@ class EventDSL {
                 }
             }
         }
-        Bot.LOGGER.info("Process event result: ${result == EventResult.empty()}")
         return result
     }
 }
