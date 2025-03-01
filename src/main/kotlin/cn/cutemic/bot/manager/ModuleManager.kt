@@ -7,9 +7,9 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.system.measureTimeMillis
 
 object ModuleManager {
-    val botModuleInstance = CopyOnWriteArrayList<BotModule>()
+    private val botModuleInstance = CopyOnWriteArrayList<BotModule>()
 
-    fun perLoadModule(){
+    fun perloadModule(){
         Bot.LOGGER.info("Preload module")
         val time = measureTimeMillis {
             ClassManager.botModuleClasses

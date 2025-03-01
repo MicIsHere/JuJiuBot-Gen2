@@ -2,7 +2,7 @@ package cn.cutemic.bot.manager
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.util.Task
-import cn.cutemic.bot.util.TaskScope
+import cn.cutemic.bot.util.scope.TaskScope
 import kotlinx.coroutines.*
 import kotlin.reflect.KFunction
 import kotlin.reflect.jvm.isAccessible
@@ -10,7 +10,8 @@ import kotlin.reflect.jvm.isAccessible
 object TaskManager {
     private val jobs = mutableListOf<Job>()
 
-    init {
+    fun loadTask(){
+        Bot.LOGGER.info("Loading task...")
         ClassManager.taskField.forEach {
             tryRegister(it)
         }

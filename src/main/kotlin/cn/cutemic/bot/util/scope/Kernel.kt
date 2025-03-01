@@ -2,7 +2,7 @@
  * Copyright (c) 2023-2025 CuteMic 保留所有权利。 All Right Reserved.
  */
 
-package cn.cutemic.bot.util
+package cn.cutemic.bot.util.scope
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName

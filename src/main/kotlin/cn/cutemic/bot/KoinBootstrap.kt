@@ -8,10 +8,11 @@ import org.koin.dsl.module
 
 class KoinBootstrap {
 
-    init {
+    fun start(){
         startKoin {
             modules(database())
         }
+        Bot.LOGGER.info("Koin started!")
     }
 
     private fun database(): Module{

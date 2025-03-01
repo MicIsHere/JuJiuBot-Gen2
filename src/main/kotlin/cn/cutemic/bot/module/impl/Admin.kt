@@ -26,8 +26,7 @@ object Admin: BotModule("管理","用于管理牛牛") {
                 val command = messageContent.safePlainText.split(" ").getOrNull(1) ?: return@on EventResult.invalid()
                 when (command) {
                     "crashtest" -> {
-                        val nu11 = null
-                        nu11!!
+                        null!!
                     }
 
                     else -> {

@@ -1,4 +1,4 @@
-package cn.cutemic.bot.util
+package cn.cutemic.bot.util.scope
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName

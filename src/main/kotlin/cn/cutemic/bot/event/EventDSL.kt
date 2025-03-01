@@ -11,7 +11,7 @@ import love.forte.simbot.event.Event
 import love.forte.simbot.event.EventResult
 import love.forte.simbot.event.listen
 import org.koin.java.KoinJavaComponent.inject
-import java.util.UUID
+import java.util.*
 
 class EventDSL {
     val listeners = mutableListOf<Application.() -> Unit>()
@@ -52,7 +52,7 @@ class EventDSL {
                     stackTrace.append("位于 ${it.className}.${it.methodName}:${it.lineNumber}\n")
                 }
                 runBlocking {
-                    event.reply("博士，这件事情我暂时没办法处理...嗯？最好不要声张？ (${throwable.message})：$throwable\n${stackTrace}\nError-ID: $uuid\n错误已被记录并通知了开发者。")
+                    event.reply("博士，这件事情我暂时没办法处理...嗯？最好不要声张？(${throwable.message})：$throwable\n${stackTrace}\nError-ID: $uuid\n错误已被记录并通知了开发者。")
                 }
             }
 
@@ -61,7 +61,7 @@ class EventDSL {
                     stackTrace.append("位于 ${it.className}.${it.methodName}:${it.lineNumber}\n")
                 }
                 runBlocking {
-                    event.reply("博士，这件事情我暂时没办法处理...嗯？最好不要声张？ (${throwable.message})：$throwable\n${stackTrace}\nError-ID: $uuid\n错误已被记录并通知了开发者。")
+                    event.reply("博士，这件事情我暂时没办法处理...嗯？最好不要声张？(${throwable.message})：$throwable\n${stackTrace}\nError-ID: $uuid\n错误已被记录并通知了开发者。")
                 }
             }
         }
@@ -73,20 +73,22 @@ class EventDSL {
     }
 
     fun processEvent(event: Event): EventResult{
+        var result = EventResult.empty()
         when (event) {
             is OneBotNormalGroupMessageEvent -> {
                 runBlocking {
                     val group = groupService.read(event.groupId.toLong())!!
                     group.soberUpTime?.let { // 醉酒检查，阻断事件传递
-                        return@runBlocking EventResult.invalid()
+                        result = EventResult.invalid()
                     }
 
                     group.blocked?.let { // 群封禁检查，阻断事件传递
-                        return@runBlocking EventResult.invalid()
+                        result = EventResult.invalid()
                     }
                 }
             }
         }
-        return EventResult.empty()
+        Bot.LOGGER.info("Process event result: ${result == EventResult.empty()}")
+        return result
     }
 }
