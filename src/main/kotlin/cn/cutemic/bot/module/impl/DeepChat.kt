@@ -122,7 +122,7 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                     .method("POST", body)
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Accept", "application/json")
-                    .addHeader("Authorization", "Bearer sk-69a5cfb33ba34d3c9660dceae5f3e3b1")
+                    .addHeader("Authorization", "Bearer ")
                     .build()
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string().toString()
@@ -136,6 +136,7 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                         val group = groupService.read(groupId.toLong())!!
                         val sleepDuration = (minOf(group.drunk, 3.5) + random.nextDouble()) * 80
                         groupService.updateSoberUpTime(group.id!!, sleepDuration.toLong())
+                        groupService.updateDrunk(group.id, 0.0)
                         messages.remove(groupId.toString())
                         reply(choice.message.content)
                         reply("Zzz...")
