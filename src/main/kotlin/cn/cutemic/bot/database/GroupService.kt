@@ -78,7 +78,13 @@ class GroupService(database: Database) {
 
     suspend fun updateSoberUpTime(id: String, time: Long?) = dbQuery {
         Group.update({ Group.id eq id }) {
-            it[Group.soberUpTime] = time
+            it[soberUpTime] = time
+        }
+    }
+
+    suspend fun updateBlockedTime(id: String, time: Long?) = dbQuery {
+        Group.update({ Group.id eq id }) {
+            it[blocked] = time
         }
     }
 }
