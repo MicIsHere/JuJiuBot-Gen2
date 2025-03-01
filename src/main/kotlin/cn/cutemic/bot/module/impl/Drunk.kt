@@ -5,10 +5,8 @@ import cn.cutemic.bot.database.GroupService
 import cn.cutemic.bot.module.BotModule
 import cn.cutemic.bot.util.Task
 import kotlinx.coroutines.runBlocking
-import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.event.EventResult
-import love.forte.simbot.message.safePlainText
 import org.koin.java.KoinJavaComponent.inject
 import java.util.concurrent.ThreadLocalRandom
 
@@ -58,9 +56,14 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
     fun trySoberUp(){
         runBlocking {
             service.readAll()
-                .filter { it.drunk > 0.0 }
                 .forEach {
-                    service.updateDrunk(it.id!!, it.drunk - random.nextDouble(0.1,0.3))
+                    if (it.drunk == 0.0) {
+                        return@runBlocking
+                    }
+
+                    val number = random.nextDouble(0.1,0.3)
+                    val result = if (((it.drunk - number) < 0)) 0.0 else it.drunk - number
+                    service.updateDrunk(it.id!!, result)
                     val time = it.soberUpTime ?: return@runBlocking
                     if (time <= 60) {
                         service.updateSoberUpTime(it.id, null)
