@@ -38,6 +38,7 @@ object Drunk: BotModule("喝酒","灌醉牛牛") {
                     reply("呀，博士。你今天走起路来，怎么看着摇...摇...晃......")
                     reply("Zzz...")
                     service.updateSoberUpTime(group.id!!, sleepDuration.toLong())
+                    return@on EventResult.empty()
                 }
 
                 service.updateDrunk(group.id!!, drunk)
