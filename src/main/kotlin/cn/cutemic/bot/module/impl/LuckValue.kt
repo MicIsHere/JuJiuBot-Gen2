@@ -20,7 +20,7 @@ object LuckValue: BotModule("人品", "查看自己的人品值") {
                     return@on EventResult.empty()
                 }
                 val value = getValue(userId.toLong())
-                reply("博士，今天的人品值是${getMessage(value)}")
+                reply("博士，你今天的人品值是${getMessage(value)}")
                 EventResult.empty()
             }
         }
