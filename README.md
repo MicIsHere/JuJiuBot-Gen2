@@ -6,11 +6,11 @@
 虽然这么说，我渴望以美酒和戏剧被招待，更渴望走向战场。
 
 ## 警告
-该项目仍处于 **极早期开发状态**。
+该项目仍处于 **极早期开发状态**，开发者无法保证其绝对稳定性。
 
 ## 已开发的功能
 - [x] 牛牛聊天
-- [ ] 牛牛人品
+- [x] 牛牛人品
 - [ ] 牛牛占卜/牛牛塔罗牌
 - [ ] 牛牛唱歌
 - [ ] 牛牛画图
@@ -20,19 +20,24 @@
 - [x] 牛牛喝酒/酒后对话
 - [ ] 牛牛夺舍
 
+## 未来规划
+- [ ] 可用于每群单独配置的网页面板
+- [ ] 基于HanLP的语义引擎
+- [ ] 重置部分OOC的提示消息
+
 ## 致谢
 
 ### 参考
 [Pallas-Bot](https://github.com/MistEO/Pallas-Bot): 《明日方舟》帕拉斯 Bot，同时也是本项目的前身。
+
+[OneBot-11](https://github.com/botuniverse/onebot-11): OneBot 11 标准。
 
 ### 基础库
 [Simple Robot](https://github.com/simple-robot/simpler-robot): 一个 Bot 风格的 Kotlin 多平台事件调度框架。
 
 [Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core): 一个基于纯 C# 的 NTQQ 协议实现。
 
-[OneBot-11](https://github.com/botuniverse/onebot-11): OneBot 11 标准
-
-[OkHttp](https://github.com/ktorio/ktor): 适用于 JVM、Android 和 GradleVM 的高效 HTTP 客户端
+[OkHttp](https://github.com/ktorio/ktor): 适用于 JVM、Android 和 GradleVM 的高效 HTTP 客户端。
 
 [Kotlin](https://github.com/JetBrains/kotlin): 简洁、安全的现代编程语言。
 
@@ -49,13 +54,15 @@
 [pgjdbc-ng](https://github.com/impossibl/pgjdbc-ng/): 适用于 PostgreSQL 的新 JDBC 驱动程序，支持 JDBC 和 Postgres 的高级功能。
 
 ### 组织/贡献者
-[Origin Technology](https://github.com/Origin-Technology): 为其提供基础网络服务
+[Origin Technology](https://github.com/Origin-Technology): 为其提供基础网络服务。
 
-π_d2R: 为其提供牛牛头像
+π_d2R: 为其提供牛牛头像。
 
-风风是喵不是猫: 为其提供牛牛酒后对话人设
+风风是喵不是猫: 为其提供牛牛酒后对话人设。
 
 ## 友情链接
 [QQ群聊：阿戈尔执政厅](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mUOOO_GjsS6naYrj5A-M-Qn9L98u7IBA&authKey=T1pEscv8DX60gCfwC0KUDKTsrO%2FJXXi0ygD46xhm7dp2rtxVrRFGlaSVCzQv8Wh6&noverify=0&group_code=801789472)
 
 [QQ群聊：菊酒屋](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=7dIESfgoVwgc4MMcN0ZMveHxdRAqC0k6&authKey=fAcXmfNAxGbS%2FyiDcLTNT8Opd0o0VPg1hDuVCrSBpTZmpT%2Fk7RULsJwM0H1eHG%2F9&noverify=0&group_code=248249482)
+
+[QQ群聊：罗德岛.自设方舟语c群](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=PhXz9_d6E3RuW9q9oJaeDej0m2dIniuj&authKey=OBOTHxJ7ccL%2Bpq9Bgb%2ByPszYM2taVYGTa2Rgze7bVXs7wj45hJ7hnbNxBGxvD%2BIL&noverify=0&group_code=628834868)
