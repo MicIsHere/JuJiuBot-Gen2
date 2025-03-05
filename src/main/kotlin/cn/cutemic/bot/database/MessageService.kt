@@ -196,4 +196,12 @@ class MessageService(database: Database) {
                 .singleOrNull()
         }
     }
+
+    suspend fun changeBot(id: String, newId: String) {
+        return dbQuery {
+            Message.update({ Message.bot eq id }) {
+                it[bot] = newId
+            }
+        }
+    }
 }

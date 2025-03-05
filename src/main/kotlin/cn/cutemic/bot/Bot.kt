@@ -2,14 +2,13 @@ package cn.cutemic.bot
 
 import cn.cutemic.bot.database.BotService
 import cn.cutemic.bot.database.GroupService
+import cn.cutemic.bot.database.MessageService
 import cn.cutemic.bot.event.EventRegistry.initAllEvents
 import cn.cutemic.bot.manager.ModuleManager
 import cn.cutemic.bot.manager.TaskManager
 import cn.cutemic.bot.model.GroupExposed
-import cn.cutemic.bot.module.impl.Chat.event
 import cn.cutemic.bot.util.LegacyDatabaseMove
 import cn.cutemic.bot.util.scope.KernelScope
-import cn.cutemic.bot.util.scope.TaskScope
 import cn.cutemic.bot.util.scope.runSynchronized
 import com.hankcs.hanlp.restful.HanLPClient
 import com.huaban.analysis.jieba.WordDictionary
@@ -26,11 +25,9 @@ import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBot
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBotConfiguration
 import love.forte.simbot.component.onebot.v11.core.bot.firstOneBotBotManager
-import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.component.onebot.v11.core.useOneBot11
 import love.forte.simbot.core.application.SimpleApplication
 import love.forte.simbot.core.application.launchSimpleApplication
-import love.forte.simbot.event.EventResult
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -45,6 +42,7 @@ class Bot {
     private lateinit var app: SimpleApplication
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
+    private val messageService by inject<MessageService>(MessageService::class.java)
     private val groupCache = mutableListOf<Long>()
     private val codecRegistry = CodecRegistries.fromRegistries(
         MongoClientSettings.getDefaultCodecRegistry(),
@@ -96,7 +94,6 @@ class Bot {
             }
             ModuleManager.perloadModule()
             initAllEvents()
-            TaskScope.launch { processGroupCheck() }
         }.onFailure {
             LOGGER.fatal("An error occurred while loading the system: ${it.message}")
             it.printStackTrace()
@@ -117,20 +114,6 @@ class Bot {
             if (groupService.read(groupID) == null) {
                 groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
                 LOGGER.info("Find new group, added group($groupID) in database.")
-            }
-        }
-    }
-
-    private fun processGroupCheck() {
-        event { // 防止运行中加入新群但没有GroupID
-            on<OneBotNormalGroupMessageEvent> {
-                val groupID = groupId.toLong()
-                if (!groupCache.contains(groupID)) {
-                    groupCache.add(groupID)
-                    groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
-                    LOGGER.info("Find new group on runtime, added group($id) in database.")
-                }
-                return@on EventResult.empty()
             }
         }
     }

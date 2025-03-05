@@ -41,4 +41,12 @@ class BotService(database: Database) {
                 .singleOrNull()
         }
     }
+
+    suspend fun change(id: Long, newId: String) {
+        return dbQuery {
+            Bot.update({ Bot.bot eq id }) {
+                it[Bot.id] = newId
+            }
+        }
+    }
 }

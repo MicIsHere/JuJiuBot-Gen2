@@ -2,6 +2,7 @@ package cn.cutemic.bot.event
 
 import cn.cutemic.bot.Bot
 import cn.cutemic.bot.database.GroupService
+import cn.cutemic.bot.model.GroupExposed
 import kotlinx.coroutines.runBlocking
 import love.forte.simbot.application.Application
 import love.forte.simbot.application.listeners
@@ -77,7 +78,8 @@ class EventDSL {
         when (event) {
             is OneBotNormalGroupMessageEvent -> {
                 runBlocking {
-                    val group = groupService.read(event.groupId.toLong())!!
+                    processGroupCheck(event)
+                    val group = groupService.read(event.groupId.toLong()) ?: throw NullPointerException("Cannot get group-id on process event.")
                     group.soberUpTime?.let { // 醉酒检查，阻断事件传递
                         result = EventResult.invalid()
                     }
@@ -89,5 +91,15 @@ class EventDSL {
             }
         }
         return result
+    }
+
+    private fun processGroupCheck(event: OneBotNormalGroupMessageEvent) {
+        runBlocking {
+            val groupID = event.groupId.toLong()
+            if (groupService.read(groupID) == null) {
+                groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
+                Bot.LOGGER.info("Find new group on runtime, added group($groupID) in database.")
+            }
+        }
     }
 }
