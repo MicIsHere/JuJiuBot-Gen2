@@ -28,6 +28,8 @@
 ## 致谢
 
 ### 参考
+[JuJiuBot](https://github.com/MicIsHere/JuJiuBot)：由 Pallas-Bot 修改而来的第一代菊酒牛牛。
+
 [Pallas-Bot](https://github.com/MistEO/Pallas-Bot): 《明日方舟》帕拉斯 Bot，同时也是本项目的前身。
 
 [OneBot-11](https://github.com/botuniverse/onebot-11): OneBot 11 标准。
