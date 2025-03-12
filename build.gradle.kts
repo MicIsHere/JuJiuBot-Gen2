@@ -2,7 +2,7 @@ plugins {
     kotlin("jvm") version "2.0.21"
 }
 
-group = "cn.cutemic.bot"
+group = "run.mic.bot"
 version = "0.1"
 
 repositories {
