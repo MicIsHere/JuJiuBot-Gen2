@@ -58,7 +58,7 @@
 
 π_d2R: 为其提供牛牛头像。
 
-风风是喵不是猫: 为其提供牛牛酒后对话人设。
+风风是喵不是猫: 为其提供中文~~帕拉斯语~~支持，为牛牛撰写了酒后对话人设及多个提示信息。
 
 ## 友情链接
 [QQ群聊：阿戈尔执政厅](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=mUOOO_GjsS6naYrj5A-M-Qn9L98u7IBA&authKey=T1pEscv8DX60gCfwC0KUDKTsrO%2FJXXi0ygD46xhm7dp2rtxVrRFGlaSVCzQv8Wh6&noverify=0&group_code=801789472)
