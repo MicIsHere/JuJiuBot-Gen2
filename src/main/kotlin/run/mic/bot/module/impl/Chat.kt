@@ -8,14 +8,18 @@ import love.forte.simbot.component.onebot.v11.core.utils.sendGroupTextMsgApi
 import love.forte.simbot.event.EventResult
 import org.koin.java.KoinJavaComponent.inject
 import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.database.*
+import run.mic.bot.model.BlockExposed
 import run.mic.bot.model.MessageExposed
 import run.mic.bot.model.context.AnswerEntry
 import run.mic.bot.model.context.ContextEntry
 import run.mic.bot.module.BotModule
+import run.mic.bot.util.CqCode
 import run.mic.bot.util.IgnoreCommand
 import run.mic.bot.util.Task
 import java.util.concurrent.ThreadLocalRandom
+import java.util.regex.Pattern
 import kotlin.math.*
 
 @OptIn(InternalOneBotAPI::class)
@@ -24,13 +28,14 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     /* 运行时变量 */
     private val random = ThreadLocalRandom.current() // 脱离线程随机
     private val messageID = mutableListOf<Pair<String, String>>() // 维护一个消息列表
-
+    private var answerMap = mutableListOf<Pair<String, AnswerEntry>>()
     /* 数据库相关变量 */
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
     private val contextService by inject<ContextService>(ContextService::class.java)
     private val answerService by inject<AnswerService>(AnswerService::class.java)
     private val messageService by inject<MessageService>(MessageService::class.java)
+    private val blockService by inject<BlockService>(BlockService::class.java)
 
     /* 运行参数 */
     private const val KEYWORD_SIZE: Int = 2 // 学习关键词数量
@@ -57,6 +62,22 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                     return@on EventResult.invalid()
                 }
 
+                if (CqCode.getType(rawMessage) == "reply"
+                    && (rawMessage.startsWith("不可以") || rawMessage.startsWith("不能说这"))) {
+
+                    CqCode.parse(rawMessage)?.let { cqCode ->
+
+                    }
+
+                    Pattern.compile("(\\[CQ:.+?)(,url=[^]]+)?(\\])").matcher(message).replaceAll("$1$3")
+                    val messageID = messageService.readByGroupID(groupExposed.id!!, rawMessage).first().id!!
+                    ban(
+                        answerMap.firstOrNull { it.first == groupExposed.id && it.second.message == messageID }!!.second,
+                        bot,
+                        userId.value
+                    )
+                }
+
                 val chatData = MessageExposed(
                     null,
                     groupExposed.id!!,
@@ -79,14 +100,15 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                     return@on EventResult.empty()
                 }
 
-                reply(chatData).let { replyMessage ->
-                    if (replyMessage == null) {
+                reply(chatData).let { answerEntry ->
+                    if (answerEntry == null) {
                         return@on EventResult.empty()
                     }
+                    val replyMessage = messageService.read(answerEntry.message)?.rawMessage ?: return@on EventResult.empty()
 
                     // 概率分割逗号并分句回复
-                    if (replyMessage.contains(",") && random.nextDouble() < SPLIT_PROBABILITY) {
-                        Bot.LOGGER.info("Spilt reply.")
+                    if (message.contains(",") && random.nextDouble() < SPLIT_PROBABILITY) {
+                        Trace.info("Spilt reply.")
                         replyMessage
                             .flatMap { replyMessage.split(",") }
                             .forEach {
@@ -94,8 +116,8 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                             }
                         return@on EventResult.empty()
                     }
-
-                    Bot.LOGGER.info("Send reply message: $replyMessage")
+                    answerMap.add(answerEntry.group!! to answerEntry)
+                    Trace.info("Send reply message: $replyMessage")
                     Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, replyMessage))
                 }
                 EventResult.empty()
@@ -227,7 +249,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
         var count = 1 // size 跟 index 是不一样的
 
         if (keywordList.isEmpty()) {
-            Bot.LOGGER.warn("TD-IDF Analyze is failed, trying use HanLp API...")
+            Trace.warn("TD-IDF Analyze is failed, trying use HanLp API...")
             runCatching {
                 val list = Bot.HAN_LP.keyphraseExtraction(text, KEYWORD_SIZE)
                 // HanLP 也可能分析不出数据
@@ -247,7 +269,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                 }
             }.onFailure {
                 // HanLP分析失败 使用原文本当作上下文
-                Bot.LOGGER.error("HanLp Analyze is failed, use raw-text...")
+                Trace.error("HanLp Analyze is failed, use raw-text...")
                 result.append(text)
             }
         } else {
@@ -347,12 +369,11 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     /**
      * 尝试回复
      *
-     * 成功获取到回答后将返回String
+     * 成功获取到回答后将返回Answer对象
      */
-    private suspend fun reply(data: MessageExposed): String? {
-        Bot.LOGGER.info("Trying reply...")
-        val answer = selectWeightedAnswer(data) ?: return null
-        return messageService.read(answer.message)?.rawMessage
+    private suspend fun reply(data: MessageExposed): AnswerEntry? {
+        Trace.info("Trying reply...")
+        return selectWeightedAnswer(data)
     }
 
     /**
@@ -374,7 +395,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
             return contextID
         }
 
-        Bot.LOGGER.info("Update context count.")
+        Trace.info("Update context count.")
         val count = contextService.get(contextID)!!.count++
         contextService.update(
             ContextEntry(
@@ -395,7 +416,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     @Task(60 * 30)
     private fun calcGroupActivity() {
         runBlocking {
-            Bot.LOGGER.info("Start calc group activity...")
+            Trace.info("Start calc group activity...")
             groupService.readAll().forEach { it ->
                 val messages = messageService.readLastMessages(it.id!!, 50)
                 if (messages.size < 2) {
@@ -416,6 +437,20 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                 val timeDecay = 1.0 / (lastMsgAgeMin + 1)
                 groupService.updateActivity(it.id, (msgRate * diversityFactor * timeDecay).roundTo(2))
             }
+        }
+    }
+
+    private fun ban(answerEntry: AnswerEntry, botId: String, userID: Long?){
+        runBlocking {
+            blockService.add(BlockExposed(
+                null,
+                botId,
+                answerEntry.group!!,
+                userID,
+                answerEntry.id!!,
+                "Ban request made by $userID from group ${answerEntry.group}",
+                System.currentTimeMillis()
+            ))
         }
     }
 

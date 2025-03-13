@@ -19,9 +19,6 @@ import love.forte.simbot.component.onebot.v11.core.useOneBot11
 import love.forte.simbot.core.application.SimpleApplication
 import love.forte.simbot.core.application.launchSimpleApplication
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.core.config.Configurator
 import org.bson.codecs.configuration.CodecRegistries
 import org.bson.codecs.pojo.PojoCodecProvider
 import org.koin.java.KoinJavaComponent.inject
@@ -55,12 +52,12 @@ class Bot {
     )
 
     init {
-        LOGGER.info("System init...")
+        Trace.info("System init...")
         KoinBootstrap().start()
         KernelScope.launch {
             app = launchSimpleApplication {
                 useOneBot11()
-                LOGGER.info("OneBot loading...")
+                Trace.info("OneBot loading...")
             }
             app.configure()
             app.join()
@@ -88,24 +85,24 @@ class Bot {
                     .codecRegistry(codecRegistry)
                     .build()
                 MongoClient.create(settings).getDatabase("JuJiuBot").let {
-                    LOGGER.info("Connect MongoDB success.")
+                    Trace.info("Connect MongoDB success.")
                     LegacyDatabaseMove.transform(it)
                 }
             }
             ModuleManager.perloadModule()
             initAllEvents()
         }.onFailure {
-            LOGGER.fatal("An error occurred while loading the system: ${it.message}")
+            Trace.fatal("An error occurred while loading the system: ${it.message}")
             it.printStackTrace()
         }
     }
 
     private suspend fun tryInsectGroupAndBotData() {
-        LOGGER.info("Insect data...")
+        Trace.info("Insect data...")
         val botId = ONEBOT.userId.toLong()
         if (botService.read(ONEBOT.userId.toLong()) == null) {
             botService.add(botId)
-            LOGGER.info("Find new bot, added bot($botId) in database.")
+            Trace.info("Find new bot, added bot($botId) in database.")
         }
 
         ONEBOT.groupRelation.groups.toList().forEach {
@@ -113,25 +110,20 @@ class Bot {
             groupCache.add(it.id.toLong())
             if (groupService.read(groupID) == null) {
                 groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
-                LOGGER.info("Find new group, added group($groupID) in database.")
+                Trace.info("Find new group, added group($groupID) in database.")
             }
         }
     }
 
     private fun loadTFIDF() {
-        LOGGER.info("TFIDF loading...")
+        Trace.info("TFIDF loading...")
         WordDictionary.getInstance().loadDict()
         FinalSeg.getInstance()
         TFIDF.init()
     }
 
     companion object {
-        private val LOG_LEVEL: Level = Level.ALL
-
-        val LOGGER: Logger = LogManager.getLogger("JuJiuBot").let {
-            Configurator.setLevel(it.name, LOG_LEVEL)
-            return@let it
-        }
+        val LOG_LEVEL: Level = Level.ALL
         val TFIDF = TFIDFAnalyzer()
         var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
         lateinit var ONEBOT: OneBotBot

@@ -4,7 +4,7 @@ import com.mongodb.kotlin.client.coroutine.MongoDatabase
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.toList
 import org.koin.java.KoinJavaComponent.inject
-import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.database.*
 import run.mic.bot.model.MessageExposed
 import run.mic.bot.model.context.AnswerEntry
@@ -44,14 +44,14 @@ object LegacyDatabaseMove {
     }
 
     private fun processMessage(message: LegacyMessageData) {
-        Bot.LOGGER.info("Processing message...")
+        Trace.info("Processing message...")
         val group = groupCache[message.groupID.toLong()]
         var plainText: String? = null
 
         val keywords = StringBuilder()
 
         if (group == null) {
-            Bot.LOGGER.info("Cannot get group(${message.groupID}) id, ignore.")
+            Trace.info("Cannot get group(${message.groupID}) id, ignore.")
             return
         }
 
@@ -107,7 +107,7 @@ object LegacyDatabaseMove {
             }
             jobs.awaitAll()
 
-            Bot.LOGGER.info("${messageList.size} message(s) need add, posting request...")
+            Trace.info("${messageList.size} message(s) need add, posting request...")
             messageService.addMany(messageList, false, 100000)
         }
     }
@@ -123,13 +123,13 @@ object LegacyDatabaseMove {
             }
             jobs.awaitAll()
 
-            Bot.LOGGER.info("${contexts.size} context(s) need add, posting request...")
+            Trace.info("${contexts.size} context(s) need add, posting request...")
             contextService.addMany(contextList, false, 10000)
         }
     }
 
     private fun processContext(context: LegacyContext) {
-        Bot.LOGGER.info("Processing context(${context.id})...")
+        Trace.info("Processing context(${context.id})...")
         val keywordList = context.keywords.split(" ")
         val keywords = keywordList.joinToString("|")
         val weights = List(keywordList.size) { "1.0" }.joinToString("|")
@@ -151,7 +151,7 @@ object LegacyDatabaseMove {
             val contexts = database.getCollection<LegacyContext>("context").find().toList()
             val messages = messageService.fastReadAll()
             // 并发处理所有消息
-            Bot.LOGGER.info("Loaded ${messages.size}[${contexts.size} Async] message, added to cache")
+            Trace.info("Loaded ${messages.size}[${contexts.size} Async] message, added to cache")
             val jobs = contexts.map { context ->
                 async {
                     processContextMessage(context, messages)
@@ -159,7 +159,7 @@ object LegacyDatabaseMove {
             }
             jobs.awaitAll()
 
-            Bot.LOGGER.info("${contexts.size} context-message(s) need add, posting request...")
+            Trace.info("${contexts.size} context-message(s) need add, posting request...")
             messageService.addMany(messageList, false, 10000)
             exitProcess(0)
         }
@@ -189,7 +189,7 @@ object LegacyDatabaseMove {
                             "0041cafe-210b-4d38-ba48-19674dbb74aa"
                         )
                     )
-                    Bot.LOGGER.info("Added message by context...")
+                    Trace.info("Added message by context...")
                 }
             }
         }
@@ -212,14 +212,14 @@ object LegacyDatabaseMove {
                     )
                 )
             }
-            Bot.LOGGER.info("Loaded ${fastLegacyContexts.size} context(fast), added to cache")
+            Trace.info("Loaded ${fastLegacyContexts.size} context(fast), added to cache")
 
             val messages = messageService.fastReadAll()
             val newContexts = contextService.fastReadAll()
 
             // 并发处理所有消息
-            Bot.LOGGER.info("Loaded ${messages.size} message, added to cache")
-            Bot.LOGGER.info("Loaded ${newContexts.size}[${fastLegacyContexts.size} Async] new-context, added to cache")
+            Trace.info("Loaded ${messages.size} message, added to cache")
+            Trace.info("Loaded ${newContexts.size}[${fastLegacyContexts.size} Async] new-context, added to cache")
             fastLegacyContexts.map { context ->
                 val job = launch(Dispatchers.Default) {
                     processAnswer(context, messages, newContexts)
@@ -228,7 +228,7 @@ object LegacyDatabaseMove {
             }
             jobs.joinAll()
 
-            Bot.LOGGER.info("${fastLegacyContexts.size} answer need add, posting request...")
+            Trace.info("${fastLegacyContexts.size} answer need add, posting request...")
             if (messageList.isNotEmpty()) {
                 messageService.addMany(messageList, false, 10000)
             }
@@ -242,7 +242,7 @@ object LegacyDatabaseMove {
         allMessage: List<FastMessageExposed>,
         allNewContext: List<FastContextEntry>
     ) {
-        Bot.LOGGER.info("Processing context(${context.id})...")
+        Trace.info("Processing context(${context.id})...")
         context.answers.forEach { answer ->
             val groupID = groupCache[answer.groupID]
             if (Objects.equals(groupID, null)) {
@@ -275,7 +275,7 @@ object LegacyDatabaseMove {
 
                         )
                     )
-                    Bot.LOGGER.info("Cannot find message: $message($groupID)[${answer.time}], ready add $nowID")
+                    Trace.info("Cannot find message: $message($groupID)[${answer.time}], ready add $nowID")
                 }
 
                 answerList.add(

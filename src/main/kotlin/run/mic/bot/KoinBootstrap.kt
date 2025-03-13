@@ -12,13 +12,13 @@ class KoinBootstrap {
         startKoin {
             modules(database())
         }
-        Bot.LOGGER.info("Koin started!")
+        Trace.info("Koin started!")
     }
 
     private fun database(): Module {
         return module {
             single {
-                Bot.LOGGER.info("Connect database...")
+                Trace.info("Connect database...")
 //                Database.connect(
 //                    "jdbc:pgsql://192.168.100.220:5432/jujiubot",
 //                    driver = "com.impossibl.postgres.jdbc.PGDriver",

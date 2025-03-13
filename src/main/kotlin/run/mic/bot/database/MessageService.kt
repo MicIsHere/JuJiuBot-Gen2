@@ -5,7 +5,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
-import run.mic.bot.Bot
 import run.mic.bot.model.MessageExposed
 import run.mic.bot.model.fast.FastMessageExposed
 import java.util.*
@@ -46,7 +45,7 @@ class MessageService(database: Database) {
             it[rawMessage] = message.rawMessage
             it[time] = message.time
         }[Message.id].let {
-            Bot.LOGGER.info("Message added to database with ID: $it")
+            Trace.info("Message added to database with ID: $it")
             it
         }
     }
@@ -65,10 +64,10 @@ class MessageService(database: Database) {
                     this@batchInsert[Message.rawMessage] = cleanNullBytes(data.rawMessage) ?: ""
                     this@batchInsert[Message.time] = data.time
                 }.let { message ->
-                    Bot.LOGGER.info("Success ${message.size}/$batchSize")
+                    Trace.info("Success ${message.size}/$batchSize")
                 }
             }.onFailure {
-                Bot.LOGGER.error("On batch $i failed.")
+                Trace.error("On batch $i failed.")
                 println(batch)
                 throw it
             }
@@ -93,6 +92,25 @@ class MessageService(database: Database) {
                     )
                 }
                 .singleOrNull()
+        }
+    }
+
+    suspend fun readByGroupID(groupID: String, rawMessage: String): List<MessageExposed> {
+        return dbQuery {
+            Message.selectAll()
+                .where(Message.group eq groupID and (Message.rawMessage eq rawMessage))
+                .map {
+                    MessageExposed(
+                        it[Message.id],
+                        it[Message.group],
+                        it[Message.user],
+                        it[Message.rawMessage],
+                        it[Message.keywords],
+                        it[Message.plainText],
+                        it[Message.time],
+                        it[Message.bot]
+                    )
+                }
         }
     }
 

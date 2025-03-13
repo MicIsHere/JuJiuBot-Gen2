@@ -115,7 +115,7 @@ class ContextService(database: Database) {
                     this@batchInsert[legacyID] = data.legacyID
                 }
             }.onFailure {
-                Bot.LOGGER.error("On batch $i failed.")
+                Trace.error("On batch $i failed.")
                 println(batch)
                 throw it
             }

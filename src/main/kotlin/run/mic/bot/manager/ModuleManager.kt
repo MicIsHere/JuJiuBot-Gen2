@@ -1,6 +1,6 @@
 package run.mic.bot.manager
 
-import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.module.BotModule
 import run.mic.bot.util.instance
 import java.util.concurrent.CopyOnWriteArrayList
@@ -10,7 +10,7 @@ object ModuleManager {
     private val botModuleInstance = CopyOnWriteArrayList<BotModule>()
 
     fun perloadModule() {
-        Bot.LOGGER.info("Preload module")
+        Trace.info("Preload module")
         val time = measureTimeMillis {
             ClassManager.botModuleClasses
                 .forEach { module ->
@@ -18,12 +18,12 @@ object ModuleManager {
                         TaskManager.tryRegister(module.instance!!)
                         registerModule(module.instance!!)
                     }.onFailure {
-                        Bot.LOGGER.error("Module ${module.name} encountered a error while registering, and System has stopped module load!")
+                        Trace.error("Module ${module.name} encountered a error while registering, and System has stopped module load!")
                         throw it
                     }
                 }
         }
-        Bot.LOGGER.info("${botModuleInstance.size} module(s) found, used ${time}ms")
+        Trace.info("${botModuleInstance.size} module(s) found, used ${time}ms")
     }
 
     fun registerModule(botModule: BotModule) {

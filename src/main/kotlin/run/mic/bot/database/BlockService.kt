@@ -4,12 +4,11 @@ import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
-import run.mic.bot.Bot
 import run.mic.bot.model.BlockExposed
 import java.util.*
 
 class BlockService(database: Database) {
-    object Block : Table("message") {
+    object Block : Table("block") {
         val id = varchar("id", 36)
         val bot = varchar("bot", 36)
         val group = varchar("group", 36).nullable()
@@ -42,7 +41,7 @@ class BlockService(database: Database) {
             it[reason] = block.reason
             it[time] = System.currentTimeMillis()
         }[Block.id].let {
-            Bot.LOGGER.info("Blocked answer id: ${block.answer}")
+            Trace.info("Blocked answer id: ${block.answer}")
             it
         }
     }

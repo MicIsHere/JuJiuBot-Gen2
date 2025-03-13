@@ -1,7 +1,7 @@
 package run.mic.bot.manager
 
 import kotlinx.coroutines.*
-import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.util.Task
 import run.mic.bot.util.scope.TaskScope
 import kotlin.reflect.KFunction
@@ -11,7 +11,7 @@ object TaskManager {
     private val jobs = mutableListOf<Job>()
 
     fun loadTask() {
-        Bot.LOGGER.info("Loading task...")
+        Trace.info("Loading task...")
         ClassManager.taskField.forEach {
             tryRegister(it)
         }
@@ -21,7 +21,7 @@ object TaskManager {
         obj::class.members.forEach { member ->
             member.annotations.forEach { annotation ->
                 if (annotation is Task) {
-                    Bot.LOGGER.info("Register task ${obj.javaClass.name}.${member.name}")
+                    Trace.info("Register task ${obj.javaClass.name}.${member.name}")
                     checkMember(member as KFunction<*>)
                     scheduleTask(obj, member, annotation.intervalSeconds)
                 }
@@ -45,7 +45,7 @@ object TaskManager {
                     method.call(obj)
                 }.onFailure {
                     if (it is IllegalStateException) {
-                        Bot.LOGGER.warn("Cannot invoke task ${obj.javaClass.`package`}, trying use 'null' args invoke.")
+                        Trace.warn("Cannot invoke task ${obj.javaClass.`package`}, trying use 'null' args invoke.")
                         method.call(obj, null)
                         return@launch
                     }

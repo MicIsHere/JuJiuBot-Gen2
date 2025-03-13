@@ -33,7 +33,7 @@ suspend fun main(){
         if (groupId !is String) {
             val updatedGroupId = groupId.toString()
 
-            Bot.LOGGER.info("Changed.")
+            Trace.info("Changed.")
 
             // 构建批量操作
             bulkOperations.add(

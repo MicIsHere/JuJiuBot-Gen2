@@ -10,6 +10,7 @@ import love.forte.simbot.event.EventResult
 import love.forte.simbot.event.listen
 import org.koin.java.KoinJavaComponent.inject
 import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.database.GroupService
 import run.mic.bot.model.GroupExposed
 import java.util.*
@@ -48,8 +49,8 @@ class EventDSL {
         val stackTrace = StringBuilder()
         val uuid = UUID.randomUUID()
         if (Bot.CRASH) {
-            Bot.LOGGER.fatal("Error-ID: $uuid")
-            Bot.LOGGER.fatal("Bot crashed, exit process.")
+            Trace.fatal("Error-ID: $uuid")
+            Trace.fatal("Bot crashed, exit process.")
             throwable.printStackTrace()
             exitProcess(-1)
         }
@@ -73,7 +74,7 @@ class EventDSL {
             }
         }
 
-        Bot.LOGGER.fatal("Error-ID: $uuid")
+        Trace.fatal("Error-ID: $uuid")
         throwable.printStackTrace()
         stackTrace.clear()
         return EventResult.invalid()
@@ -104,7 +105,7 @@ class EventDSL {
             val groupID = event.groupId.toLong()
             if (groupService.read(groupID) == null) {
                 groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
-                Bot.LOGGER.info("Find new group on runtime, added group($groupID) in database.")
+                Trace.info("Find new group on runtime, added group($groupID) in database.")
             }
         }
     }
