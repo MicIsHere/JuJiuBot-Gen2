@@ -22,6 +22,10 @@ import org.apache.logging.log4j.Level
 import org.bson.codecs.configuration.CodecRegistries
 import org.bson.codecs.pojo.PojoCodecProvider
 import org.koin.java.KoinJavaComponent.inject
+import run.mic.bot.config.Config
+import run.mic.bot.config.data.ConfigBase
+import run.mic.bot.config.data.ConfigProtocol
+import run.mic.bot.config.data.database.ConfigDatabase
 import run.mic.bot.database.BotService
 import run.mic.bot.database.GroupService
 import run.mic.bot.database.MessageService
@@ -33,9 +37,7 @@ import run.mic.bot.util.LegacyDatabaseMove
 import run.mic.bot.util.scope.KernelScope
 import run.mic.bot.util.scope.runSynchronized
 
-class Bot {
-    private val TRANSFOR_LEGACY_DATABASE = false // 是否迁移旧版数据库(或Pallas-Bot的数据库)
-
+class Bot(val config: ConfigBase) {
     private lateinit var app: SimpleApplication
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
@@ -52,14 +54,14 @@ class Bot {
     )
 
     init {
-        Trace.info("System init...")
-        KoinBootstrap().start()
+        Trace.info("系统初始化...")
+        KoinBootstrap(config.database).start()
         KernelScope.launch {
             app = launchSimpleApplication {
                 useOneBot11()
-                Trace.info("OneBot loading...")
+                Trace.info("OneBot 加载...")
             }
-            app.configure()
+            app.configure(config.protocol, config.database)
             app.join()
         }.runSynchronized {
             loadTFIDF()
@@ -67,42 +69,44 @@ class Bot {
         }
     }
 
-    private suspend fun Application.configure() {
+    private suspend fun Application.configure(protocol: ConfigProtocol, database: ConfigDatabase) {
         runCatching {
             val botManager = botManagers.firstOneBotBotManager()
+            Trace.info("以${protocol.botUniqueId}身份连接到 ${protocol.apiServerHost}")
             ONEBOT = botManager.register(
                 OneBotBotConfiguration().apply {
-                    botUniqueId = "2415838976"
-                    apiServerHost = Url("http://127.0.0.1:7999")
-                    eventServerHost = Url("ws://127.0.0.1:8080/onebot/v11/ws/")
+                    botUniqueId = protocol.botUniqueId.toString()
+                    apiServerHost = Url(protocol.apiServerHost)
+                    eventServerHost = Url(protocol.eventServerHost)
                 }
             )
             ONEBOT.start()
             tryInsectGroupAndBotData()
-            if (TRANSFOR_LEGACY_DATABASE) {
+            if (database.mongoDB.transferOldData) {
+                Trace.info("开始迁移旧数据...")
                 val settings = MongoClientSettings.builder()
-                    .applyConnectionString(ConnectionString("mongodb://localhost"))
+                    .applyConnectionString(ConnectionString("mongodb://${database.mongoDB.host}:${database.mongoDB.port}"))
                     .codecRegistry(codecRegistry)
                     .build()
-                MongoClient.create(settings).getDatabase("JuJiuBot").let {
-                    Trace.info("Connect MongoDB success.")
+                MongoClient.create(settings).getDatabase(database.mongoDB.databaseName).let {
+                    Trace.info("连接 MongoDB 成功.")
                     LegacyDatabaseMove.transform(it)
                 }
             }
             ModuleManager.perloadModule()
             initAllEvents()
         }.onFailure {
-            Trace.fatal("An error occurred while loading the system: ${it.message}")
+            Trace.fatal("在系统加载时出现错误: ${it.message}")
             it.printStackTrace()
         }
     }
 
     private suspend fun tryInsectGroupAndBotData() {
-        Trace.info("Insect data...")
+        Trace.info("置入数据...")
         val botId = ONEBOT.userId.toLong()
         if (botService.read(ONEBOT.userId.toLong()) == null) {
             botService.add(botId)
-            Trace.info("Find new bot, added bot($botId) in database.")
+            Trace.info("发现了新Bot, 已添加Bot($botId)至数据库。")
         }
 
         ONEBOT.groupRelation.groups.toList().forEach {
@@ -110,13 +114,13 @@ class Bot {
             groupCache.add(it.id.toLong())
             if (groupService.read(groupID) == null) {
                 groupService.add(GroupExposed(null, groupID, 0.0, 0.0, null, null))
-                Trace.info("Find new group, added group($groupID) in database.")
+                Trace.info("发现了新群聊, 已添加群聊($groupID)至数据库。")
             }
         }
     }
 
     private fun loadTFIDF() {
-        Trace.info("TFIDF loading...")
+        Trace.info("TF-IDF 加载中...")
         WordDictionary.getInstance().loadDict()
         FinalSeg.getInstance()
         TFIDF.init()
@@ -125,8 +129,9 @@ class Bot {
     companion object {
         val LOG_LEVEL: Level = Level.ALL
         val TFIDF = TFIDFAnalyzer()
-        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", "")
+        var HAN_LP: HanLPClient = HanLPClient("https://www.hanlp.com/api", Config.getValue().module.chat.hanLPToken)
         lateinit var ONEBOT: OneBotBot
         val CRASH = false // 是否在发生错误时崩溃
+        val DATABASE_DEBUG = false // 数据库调试
     }
 }

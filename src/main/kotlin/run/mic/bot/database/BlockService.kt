@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.model.BlockExposed
 import java.util.*
 
@@ -41,7 +43,7 @@ class BlockService(database: Database) {
             it[reason] = block.reason
             it[time] = System.currentTimeMillis()
         }[Block.id].let {
-            Trace.info("Blocked answer id: ${block.answer}")
+            if (Bot.DATABASE_DEBUG) Trace.info("Blocked answer id: ${block.answer}")
             it
         }
     }

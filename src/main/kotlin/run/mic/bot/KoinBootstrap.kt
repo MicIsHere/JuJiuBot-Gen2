@@ -4,32 +4,27 @@ import org.jetbrains.exposed.sql.Database
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import run.mic.bot.config.data.database.ConfigDatabase
 import run.mic.bot.database.*
 
-class KoinBootstrap {
+class KoinBootstrap(val config: ConfigDatabase) {
 
     fun start() {
         startKoin {
             modules(database())
         }
-        Trace.info("Koin started!")
+        Trace.info("Koin 加载中...")
     }
 
     private fun database(): Module {
         return module {
             single {
-                Trace.info("Connect database...")
-//                Database.connect(
-//                    "jdbc:pgsql://192.168.100.220:5432/jujiubot",
-//                    driver = "com.impossibl.postgres.jdbc.PGDriver",
-//                    user = "user_tPMaQ5",
-//                    password = "password_j5RBbH"
-//                )
+                Trace.info("连接数据库...")
                 Database.connect(
-                    "jdbc:pgsql://localhost:5432/jujiubot",
+                    "jdbc:pgsql://${config.postgres.host}:${config.postgres.port}/${config.postgres.databaseName}",
                     driver = "com.impossibl.postgres.jdbc.PGDriver",
-                    user = "postgres",
-                    password = "mic2333"
+                    user = config.postgres.user,
+                    password = config.postgres.password
                 )
             }
 

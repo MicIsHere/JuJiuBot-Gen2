@@ -5,7 +5,11 @@ import love.forte.simbot.common.id.toLong
 import love.forte.simbot.component.onebot.common.annotations.InternalOneBotAPI
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
 import love.forte.simbot.component.onebot.v11.core.utils.sendGroupTextMsgApi
+import love.forte.simbot.component.onebot.v11.message.segment.OneBotReply
+import love.forte.simbot.component.onebot.v11.message.segment.OneBotText
+import love.forte.simbot.component.onebot.v11.message.segment.oneBotSegmentOrNull
 import love.forte.simbot.event.EventResult
+import love.forte.simbot.message.Messages
 import org.koin.java.KoinJavaComponent.inject
 import run.mic.bot.Bot
 import run.mic.bot.Trace
@@ -15,8 +19,8 @@ import run.mic.bot.model.MessageExposed
 import run.mic.bot.model.context.AnswerEntry
 import run.mic.bot.model.context.ContextEntry
 import run.mic.bot.module.BotModule
-import run.mic.bot.util.CqCode
 import run.mic.bot.util.IgnoreCommand
+import run.mic.bot.util.Lagrange
 import run.mic.bot.util.Task
 import java.util.concurrent.ThreadLocalRandom
 import java.util.regex.Pattern
@@ -29,7 +33,8 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     private val random = ThreadLocalRandom.current() // 脱离线程随机
     private val messageID = mutableListOf<Pair<String, String>>() // 维护一个消息列表
     private var answerMap = mutableListOf<Pair<String, AnswerEntry>>()
-    /* 数据库相关变量 */
+
+    /* 数据库相关 */
     private val groupService by inject<GroupService>(GroupService::class.java)
     private val botService by inject<BotService>(BotService::class.java)
     private val contextService by inject<ContextService>(ContextService::class.java)
@@ -49,33 +54,30 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
         event {
             on<OneBotNormalGroupMessageEvent> {
                 val message = messageContent.plainText ?: ""
-                val bot =
-                    botService.read(bot.userId.toLong()) ?: throw NullPointerException("Cannot get bot-id in database.")
-                val groupExposed = groupService.read(groupId.toLong())
-                    ?: throw NullPointerException("Cannot get group-id in database.")
-
-                if (rawMessage.startsWith("[CQ:")) {
-                    return@on EventResult.invalid()
-                }
-
                 if (IgnoreCommand.equals(message)) {
                     return@on EventResult.invalid()
                 }
+                val bot = botService.read(bot.userId.toLong()) ?: throw NullPointerException("无法获取当前Bot的ID")
+                val groupExposed = groupService.read(groupId.toLong()) ?: throw NullPointerException("无法获取当前GroupID")
 
-                if (CqCode.getType(rawMessage) == "reply"
-                    && (rawMessage.startsWith("不可以") || rawMessage.startsWith("不能说这"))) {
-
-                    CqCode.parse(rawMessage)?.let { cqCode ->
-
-                    }
-
-                    Pattern.compile("(\\[CQ:.+?)(,url=[^]]+)?(\\])").matcher(message).replaceAll("$1$3")
-                    val messageID = messageService.readByGroupID(groupExposed.id!!, rawMessage).first().id!!
+                if (isBanCommand(messageContent.messages)) {
+                    val banMessageID = messageContent.messages.single { it.oneBotSegmentOrNull<OneBotReply>() != null }.oneBotSegmentOrNull<OneBotReply>() ?: return@on EventResult.empty()
+                    Trace.info("获取消息ID: ${banMessageID.id}")
+                    val banMessageResult = Lagrange.getGroupMessage(groupId.toLong(), banMessageID.id.toString(), 1) ?: return@on EventResult.empty()
+                    val targetRawMessage = Pattern.compile("(\\[CQ:.+?)(,url=[^]]+)?(])")
+                        .matcher(Lagrange.parseRawMessage(banMessageResult)).replaceAll("$1$3")
+                        .toString()
+                    Trace.info("返回数据($targetRawMessage)： $banMessageResult")
+                    val messageID = messageService.readByGroupID(groupExposed.id!!, targetRawMessage).firstOrNull()?.id ?: return@on EventResult.empty()
+                    val answer = answerService.get(groupExposed.id, messageID)
+                    Trace.info("准备提交封禁请求: ${groupExposed.id}, $messageID, ${answer != null}")
+                    reply("这对角可能会不小心撞倒些家具，我会尽量小心。")
                     ban(
-                        answerMap.firstOrNull { it.first == groupExposed.id && it.second.message == messageID }!!.second,
+                        answer,
                         bot,
                         userId.value
                     )
+                    return@on EventResult.empty()
                 }
 
                 val chatData = MessageExposed(
@@ -93,22 +95,16 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                     learn(chatData)
                 }
 
-                if (random.nextDouble() >= calculateReplyProbability(
-                        groupService.read(groupExposed.id)?.activity ?: 0.0
-                    )
-                ) { // 查找回复概率
+                if (random.nextDouble() >= calculateReplyProbability(groupService.read(groupExposed.id)?.activity ?: 0.0)) { // 计算回复概率
                     return@on EventResult.empty()
                 }
 
                 reply(chatData).let { answerEntry ->
-                    if (answerEntry == null) {
-                        return@on EventResult.empty()
-                    }
+                    answerEntry ?: return@on EventResult.empty()
                     val replyMessage = messageService.read(answerEntry.message)?.rawMessage ?: return@on EventResult.empty()
-
-                    // 概率分割逗号并分句回复
-                    if (message.contains(",") && random.nextDouble() < SPLIT_PROBABILITY) {
-                        Trace.info("Spilt reply.")
+                    answerMap.add(answerEntry.group!! to answerEntry)
+                    if (message.contains(",") && random.nextDouble() < SPLIT_PROBABILITY) {// 概率分割逗号并分句回复
+                        Trace.info("本次触发分句回复")
                         replyMessage
                             .flatMap { replyMessage.split(",") }
                             .forEach {
@@ -116,8 +112,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                             }
                         return@on EventResult.empty()
                     }
-                    answerMap.add(answerEntry.group!! to answerEntry)
-                    Trace.info("Send reply message: $replyMessage")
+                    Trace.info("发送回复消息: $replyMessage")
                     Bot.ONEBOT.executeData(sendGroupTextMsgApi(groupId, replyMessage))
                 }
                 EventResult.empty()
@@ -135,10 +130,10 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
         val lastMessageID = messageID
             .lastOrNull { it.second == data.groupID }
             ?.first
-            ?: throw NullPointerException("Cannot get last message in database.")
+            ?: throw NullPointerException("获取最新消息ID失败")
 
         val lastMessage =
-            messageService.read(lastMessageID) ?: throw NullPointerException("Cannot get last message in database.")
+            messageService.read(lastMessageID) ?: throw NullPointerException("获取最新消息失败")
         // 添加这次发言的信息数据
         messageService.add(data).let {
             messageID.add(Pair(it, data.groupID))
@@ -249,12 +244,12 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
         var count = 1 // size 跟 index 是不一样的
 
         if (keywordList.isEmpty()) {
-            Trace.warn("TD-IDF Analyze is failed, trying use HanLp API...")
+            Trace.warn("TD-IDF 分词失败, 尝试使用HanLp")
             runCatching {
                 val list = Bot.HAN_LP.keyphraseExtraction(text, KEYWORD_SIZE)
                 // HanLP 也可能分析不出数据
                 if (list.isEmpty()) {
-                    throw NullPointerException("HanLp Analyze is failed")
+                    throw NullPointerException("HanLp分词失败")
                 }
                 list.forEach {
                     if (count == list.size) {
@@ -269,7 +264,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
                 }
             }.onFailure {
                 // HanLP分析失败 使用原文本当作上下文
-                Trace.error("HanLp Analyze is failed, use raw-text...")
+                Trace.warn("HanLp分词失败, 使用原文本")
                 result.append(text)
             }
         } else {
@@ -372,7 +367,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
      * 成功获取到回答后将返回Answer对象
      */
     private suspend fun reply(data: MessageExposed): AnswerEntry? {
-        Trace.info("Trying reply...")
+        Trace.info("尝试回复消息：${data.rawMessage}")
         return selectWeightedAnswer(data)
     }
 
@@ -395,18 +390,18 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
             return contextID
         }
 
-        Trace.info("Update context count.")
-        val count = contextService.get(contextID)!!.count++
+        val count = contextService.get(contextID)!!.count
         contextService.update(
             ContextEntry(
                 contextID,
                 keywords = keyword,
                 keywordsWeight = weight,
-                count = count,
+                count = count + 1,
                 lastUpdated = System.currentTimeMillis(),
                 null
             )
         )
+        Trace.info("上下文权重已更新($contextID): $count -> ${count + 1}")
         return contextID
     }
 
@@ -416,7 +411,7 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     @Task(60 * 30)
     private fun calcGroupActivity() {
         runBlocking {
-            Trace.info("Start calc group activity...")
+            Trace.info("开始计算群聊活跃度")
             groupService.readAll().forEach { it ->
                 val messages = messageService.readLastMessages(it.id!!, 50)
                 if (messages.size < 2) {
@@ -440,7 +435,13 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
         }
     }
 
-    private fun ban(answerEntry: AnswerEntry, botId: String, userID: Long?){
+    private fun ban(answerEntry: AnswerEntry?, botId: String, userID: Long?){
+        if (answerEntry == null) {
+            Trace.warn("提交的Answer为空")
+            return
+        }
+
+        Trace.info("封禁消息: ${answerEntry.message}, 上下文: ${answerEntry.context}")
         runBlocking {
             blockService.add(BlockExposed(
                 null,
@@ -457,5 +458,10 @@ object Chat : BotModule("聊天", "与牛牛聊天") {
     private fun Double.roundTo(decimals: Int): Double {
         val factor = 10.0.pow(decimals)
         return (this * factor).roundToInt() / factor
+    }
+
+    private fun isBanCommand(messages: Messages): Boolean{
+        return (messages.any { it.oneBotSegmentOrNull<OneBotReply>() != null }
+                && messages.any { it.oneBotSegmentOrNull<OneBotText>()?.data?.text?.contains("不可以") == true })
     }
 }

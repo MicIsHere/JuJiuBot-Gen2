@@ -1,10 +1,5 @@
 package run.mic.bot.module.impl
 
-import run.mic.bot.Bot
-import run.mic.bot.database.GroupService
-import run.mic.bot.model.Response
-import run.mic.bot.module.BotModule
-import run.mic.bot.util.IgnoreCommand
 import com.google.gson.Gson
 import kotlinx.serialization.json.*
 import love.forte.simbot.component.onebot.v11.core.event.message.OneBotNormalGroupMessageEvent
@@ -15,6 +10,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.koin.java.KoinJavaComponent.inject
+import run.mic.bot.Bot
+import run.mic.bot.config.Config
+import run.mic.bot.database.GroupService
+import run.mic.bot.model.Response
+import run.mic.bot.module.BotModule
+import run.mic.bot.util.IgnoreCommand
 import java.time.Duration
 import java.util.concurrent.ThreadLocalRandom
 
@@ -122,7 +123,7 @@ object DeepChat: BotModule("深度聊天","在醉酒状态下接入Deepseek的�
                     .method("POST", body)
                     .addHeader("Content-Type", "application/json")
                     .addHeader("Accept", "application/json")
-                    .addHeader("Authorization", "Bearer ")
+                    .addHeader("Authorization", "Bearer ${Config.getValue().module.deepChat.token}")
                     .build()
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string().toString()

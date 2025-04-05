@@ -5,6 +5,8 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.model.MessageExposed
 import run.mic.bot.model.fast.FastMessageExposed
 import java.util.*
@@ -45,7 +47,7 @@ class MessageService(database: Database) {
             it[rawMessage] = message.rawMessage
             it[time] = message.time
         }[Message.id].let {
-            Trace.info("Message added to database with ID: $it")
+            if (Bot.DATABASE_DEBUG) Trace.info("Message added to database with ID: $it")
             it
         }
     }
@@ -64,10 +66,10 @@ class MessageService(database: Database) {
                     this@batchInsert[Message.rawMessage] = cleanNullBytes(data.rawMessage) ?: ""
                     this@batchInsert[Message.time] = data.time
                 }.let { message ->
-                    Trace.info("Success ${message.size}/$batchSize")
+                    if (Bot.DATABASE_DEBUG) Trace.info("Success ${message.size}/$batchSize")
                 }
             }.onFailure {
-                Trace.error("On batch $i failed.")
+                if (Bot.DATABASE_DEBUG) Trace.error("On batch $i failed.")
                 println(batch)
                 throw it
             }
@@ -98,7 +100,7 @@ class MessageService(database: Database) {
     suspend fun readByGroupID(groupID: String, rawMessage: String): List<MessageExposed> {
         return dbQuery {
             Message.selectAll()
-                .where(Message.group eq groupID and (Message.rawMessage eq rawMessage))
+                .where((Message.group eq groupID) and (Message.rawMessage eq rawMessage))
                 .map {
                     MessageExposed(
                         it[Message.id],

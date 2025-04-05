@@ -5,6 +5,8 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.database.ContextService.Context
 import run.mic.bot.model.context.AnswerEntry
 import java.util.*
@@ -69,6 +71,24 @@ class AnswerService(database: Database) {
         }
     }
 
+    suspend fun get(messageID: String, groupID: String): AnswerEntry? {
+        return dbQuery {
+            Answer.selectAll()
+                .where((Answer.message eq messageID) and (Answer.group eq groupID))
+                .map {
+                    AnswerEntry(
+                        it[Answer.id],
+                        it[Answer.group],
+                        it[Answer.count],
+                        it[Answer.context],
+                        it[Answer.message],
+                        it[Answer.lastUsed]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
     // 添加一个回答
     suspend fun add(entry: AnswerEntry): String = dbQuery {
         Answer.insert {
@@ -79,7 +99,7 @@ class AnswerService(database: Database) {
             it[context] = entry.context
             it[message] = entry.message
         }[Answer.id].let {
-            Trace.info("Answer added to database $entry")
+            if (Bot.DATABASE_DEBUG) Trace.info("Answer added to database $entry")
             it
         }
     }
@@ -113,11 +133,10 @@ class AnswerService(database: Database) {
                     this@batchInsert[Answer.context] = data.context
                     this@batchInsert[Answer.message] = data.message
                 }.let { message ->
-                    Trace.info("Success ${message.size}/$batchSize")
+                    if (Bot.DATABASE_DEBUG) Trace.info("Success ${message.size}/$batchSize")
                 }
             }.onFailure {
-                Trace.error("On batch $i failed.")
-                println(batch)
+                if (Bot.DATABASE_DEBUG)  Trace.error("On batch $i failed.")
                 throw it
             }
         }

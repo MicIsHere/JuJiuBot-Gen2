@@ -1,6 +1,12 @@
 package run.mic.bot.database
 
+import kotlinx.coroutines.Dispatchers
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.transactions.transaction
 import run.mic.bot.Bot
+import run.mic.bot.Trace
 import run.mic.bot.database.ContextService.Context.count
 import run.mic.bot.database.ContextService.Context.id
 import run.mic.bot.database.ContextService.Context.keywords
@@ -9,11 +15,6 @@ import run.mic.bot.database.ContextService.Context.lastUpdated
 import run.mic.bot.database.ContextService.Context.legacyID
 import run.mic.bot.model.context.ContextEntry
 import run.mic.bot.model.fast.FastContextEntry
-import kotlinx.coroutines.Dispatchers
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 // 问题上下文
@@ -115,7 +116,7 @@ class ContextService(database: Database) {
                     this@batchInsert[legacyID] = data.legacyID
                 }
             }.onFailure {
-                Trace.error("On batch $i failed.")
+                if (Bot.DATABASE_DEBUG) Trace.error("On batch $i failed.")
                 println(batch)
                 throw it
             }
